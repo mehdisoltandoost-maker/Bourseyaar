@@ -23,7 +23,7 @@ jobs:
       - name: Extract project
         run: |
           mkdir project
-          unzip -o BourseYaar_Test_Project.zip -d project
+          unzip -o BourseYaar_Test_Project*.zip -d project
           echo "Project files:"
           find project -maxdepth 5 -type f | head -100
 
