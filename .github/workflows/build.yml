@@ -1,62 +1,65 @@
 name: Build BourseYaar APK
+
 on:
-push:
-branches:
-- main
-workflow_dispatch:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
 permissions:
-contents: write
+  contents: write
+
 jobs:
-build:
-runs-on: ubuntu-latest
-steps:
-  - name: Checkout
-    uses: actions/checkout@v4
+  build:
+    runs-on: ubuntu-latest
 
-  - name: Setup Java
-    uses: actions/setup-java@v5
-    with:
-      distribution: temurin
-      java-version: '17'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  - name: Setup Gradle
-    uses: gradle/actions/setup-gradle@v4
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
 
-  - name: Extract project
-    run: |
-      mkdir -p project
-      unzip -o BourseYaar_Test_Project.zip -d project
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-  - name: Build APK
-    working-directory: project/BourseYaar_Test_Project
-    run: |
-      gradle assembleDebug
+      - name: Extract project
+        run: |
+          mkdir -p project
+          unzip -o BourseYaar_Test_Project.zip -d project
 
-  - name: Find APK
-    run: |
-      echo "=== APK files ==="
-      find project -type f -name "*.apk" -exec ls -lh {} \;
+      - name: Build APK
+        working-directory: project/BourseYaar_Test_Project
+        run: |
+          gradle assembleDebug
 
-  - name: Prepare APK
-    run: |
-      APK=$(find project -type f -name "*.apk" | head -n 1)
-      test -n "$APK"
-      cp "$APK" BourseYaar.apk
-      ls -lh BourseYaar.apk
+      - name: Find APK
+        run: |
+          echo "=== APK files ==="
+          find project -type f -name "*.apk" -exec ls -lh {} \;
 
-  - name: Upload APK Artifact
-    uses: actions/upload-artifact@v4
-    with:
-      name: BourseYaar-APK
-      path: BourseYaar.apk
-      if-no-files-found: error
+      - name: Prepare APK
+        run: |
+          APK=$(find project -type f -name "*.apk" | head -n 1)
+          test -n "$APK"
+          cp "$APK" BourseYaar.apk
+          ls -lh BourseYaar.apk
 
-  - name: Create Release
-    env:
-      GH_TOKEN: ${{ github.token }}
-    run: |
-      TAG="v1.0.${{ github.run_number }}"
-      gh release create "$TAG" BourseYaar.apk \
-        --title "BourseYaar APK $TAG" \
-        --notes "BourseYaar Android APK"
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BourseYaar-APK
+          path: BourseYaar.apk
+          if-no-files-found: error
 
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v1.0.${{ github.run_number }}"
+          gh release create "$TAG" BourseYaar.apk \
+            --title "BourseYaar APK $TAG" \
+            --notes "BourseYaar Android APK"
