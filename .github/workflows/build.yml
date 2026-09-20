@@ -22,7 +22,7 @@ jobs:
 
       - name: Prepare Android SDK
         run: |
-          yes | sdkmanager --licenses || true
+          SDKMANAGER=$(find "$ANDROID_HOME" -name sdkmanager -type f 2>/dev/null | head -n 1)
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Install Gradle
