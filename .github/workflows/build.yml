@@ -20,15 +20,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Find Android SDK
-        run: |
-          echo "ANDROID_HOME=${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}" -name sdkmanager -type f 2>/dev/null || true
-
       - name: Prepare Android SDK
         run: |
-          SDKMANAGER=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}" -name sdkmanager -type f 2>/dev/null | head -n 1)
-          echo "Using: $SDKMANAGER"
+          SDKMANAGER=$(find /usr/local/lib/android/sdk -name sdkmanager -type f 2>/dev/null | head -n 1)
+          echo "SDKMANAGER=$SDKMANAGER"
+          test -n "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses || true
           "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
@@ -38,16 +34,26 @@ jobs:
           unzip -q gradle-8.10.2-bin.zip
           echo "$PWD/gradle-8.10.2/bin" >> "$GITHUB_PATH"
 
+      - name: Extract BourseYaar project
+        run: |
+          unzip -o BourseYaar-project.zip -d project
+          echo "Project files:"
+          find project -maxdepth 4 -type f | head -100
+
       - name: Build APK
         run: |
+          PROJECT_DIR=$(dirname "$(find "$GITHUB_WORKSPACE/project" \( -name settings.gradle -o -name settings.gradle.kts \) -type f | head -n 1)")
+          echo "PROJECT_DIR=$PROJECT_DIR"
+          test -n "$PROJECT_DIR"
+          cd "$PROJECT_DIR"
           gradle assembleDebug --stacktrace
 
-      - name: Check APK
+      - name: Find APK
         run: |
-          ls -lh app/build/outputs/apk/debug/app-debug.apk
+          find "$GITHUB_WORKSPACE/project" -type f -name "*.apk" -ls
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: BourseYaar-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: project/**/build/outputs/apk/debug/*.apk
