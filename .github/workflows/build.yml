@@ -14,6 +14,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Extract project ZIP
+        run: |
+          unzip -o BourseYaar_Test_Project.zip -d project
+
+      - name: Find Gradle project
+        run: |
+          echo "Searching for Gradle project..."
+          find project -name gradlew -type f -print
+
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
@@ -24,16 +33,20 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build APK
-        run: ./gradlew assembleDebug
+        run: |
+          GRADLEW=$(find project -name gradlew -type f | head -n 1)
+          chmod +x "$GRADLEW"
+          cd "$(dirname "$GRADLEW")"
+          ./gradlew assembleDebug
 
       - name: Find APK
         run: |
           echo "APK files:"
-          find . -type f -name "*.apk" -print
+          find project -type f -name "*.apk" -print
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: BourseYaar-APK
-          path: "**/build/outputs/apk/debug/*.apk"
+          path: "project/**/build/outputs/apk/debug/*.apk"
           if-no-files-found: error
