@@ -23,7 +23,6 @@ jobs:
       - name: Prepare Android SDK
         run: |
           SDKMANAGER=$(find /usr/local/lib/android/sdk -name sdkmanager -type f 2>/dev/null | head -n 1)
-          echo "SDKMANAGER=$SDKMANAGER"
           test -n "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses || true
           "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
@@ -34,26 +33,28 @@ jobs:
           unzip -q gradle-8.10.2-bin.zip
           echo "$PWD/gradle-8.10.2/bin" >> "$GITHUB_PATH"
 
-      - name: Extract BourseYaar project
+      - name: Extract project
         run: |
           unzip -o BourseYaar-project.zip -d project
-          echo "Project files:"
-          find project -maxdepth 4 -type f | head -100
 
       - name: Build APK
         run: |
           PROJECT_DIR=$(dirname "$(find "$GITHUB_WORKSPACE/project" \( -name settings.gradle -o -name settings.gradle.kts \) -type f | head -n 1)")
           echo "PROJECT_DIR=$PROJECT_DIR"
-          test -n "$PROJECT_DIR"
           cd "$PROJECT_DIR"
           gradle assembleDebug --stacktrace
 
-      - name: Find APK
+      - name: Locate APK
         run: |
-          find "$GITHUB_WORKSPACE/project" -type f -name "*.apk" -ls
+          echo "===== APK FILES ====="
+          find "$GITHUB_WORKSPACE/project" -type f -name "*.apk" -exec ls -lh {} \;
+          echo "===== ALL BUILD OUTPUTS ====="
+          find "$GITHUB_WORKSPACE/project" -type f -path "*/build/outputs/*" -exec ls -lh {} \;
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: BourseYaar-APK
-          path: project/**/build/outputs/apk/debug/*.apk
+          path: |
+            project/**/build/outputs/**/*.apk
+          if-no-files-found: error
