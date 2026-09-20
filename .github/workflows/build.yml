@@ -8,27 +8,28 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK
-        uses: actions/setup-java@v4
+      - name: Set up Java
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
+      - name: Set up Android
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK
+      - name: Install Android SDK packages
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          sdkmanager "platform-tools"
+          sdkmanager "platforms;android-35"
+          sdkmanager "build-tools;35.0.0"
 
-      - name: Create project
+      - name: Create Android project
         run: |
           mkdir -p app/src/main/java/com/bourseyaar/app
           mkdir -p app/src/main/res/values
@@ -98,8 +99,8 @@ jobs:
                       android:exported="true">
 
                       <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
                       </intent-filter>
 
                   </activity>
@@ -117,8 +118,8 @@ jobs:
 
                   <item name="android:fontFamily">sans</item>
                   <item name="android:windowLightStatusBar">true</item>
-                  <item name="android:navigationBarColor">#FFFFFF</item>
                   <item name="android:statusBarColor">#FFFFFF</item>
+                  <item name="android:navigationBarColor">#FFFFFF</item>
 
               </style>
 
@@ -166,6 +167,7 @@ jobs:
                       "• بررسی نمادها\n" +
                       "• پیشنهادهای معاملاتی"
                   );
+
                   subtitle.setTextSize(18);
                   subtitle.setTextColor(Color.DKGRAY);
                   subtitle.setGravity(Gravity.CENTER);
@@ -179,23 +181,19 @@ jobs:
           }
           EOF
 
-      - name: Download Gradle
+      - name: Install Gradle
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.10.2-bin.zip
           unzip -q gradle-8.10.2-bin.zip
-          export GRADLE_HOME=$PWD/gradle-8.10.2
-          export PATH=$GRADLE_HOME/bin:$PATH
-          gradle --version
 
       - name: Build APK
         run: |
-          export GRADLE_HOME=$PWD/gradle-8.10.2
-          export PATH=$GRADLE_HOME/bin:$PATH
-          gradle assembleDebug --stacktrace
+          ./gradle-8.10.2/bin/gradle assembleDebug --stacktrace
 
-      - name: Find APK
+      - name: Verify APK
         run: |
-          find . -type f -name "*.apk" -print
+          ls -lh app/build/outputs/apk/debug/
+          file app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
