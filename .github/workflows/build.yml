@@ -1,13 +1,10 @@
 name: Build BourseYaar APK
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
-  workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   build:
@@ -17,49 +14,192 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
+      - name: Set up JDK
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Extract project
+      - name: Install Android SDK
         run: |
-          mkdir -p project
-          unzip -o BourseYaar_Test_Project.zip -d project
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Create project
+        run: |
+          mkdir -p app/src/main/java/com/bourseyaar/app
+          mkdir -p app/src/main/res/values
+
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
+          rootProject.name = "BourseYaar"
+          include(":app")
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.7.3' apply false
+          }
+          EOF
+
+          cat > gradle.properties <<'EOF'
+          android.useAndroidX=true
+          android.nonTransitiveRClass=true
+          EOF
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.bourseyaar.app'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId "com.bourseyaar.app"
+                  minSdk 23
+                  targetSdk 35
+                  versionCode 1
+                  versionName "1.0"
+              }
+          }
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <application
+                  android:theme="@style/AppTheme"
+                  android:label="بورس‌یار"
+                  android:allowBackup="true"
+                  android:supportsRtl="true">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+
+                  </activity>
+
+              </application>
+
+          </manifest>
+          EOF
+
+          cat > app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+
+              <style name="AppTheme"
+                  parent="android:style/Theme.Material.Light.NoActionBar">
+
+                  <item name="android:fontFamily">sans</item>
+                  <item name="android:windowLightStatusBar">true</item>
+                  <item name="android:navigationBarColor">#FFFFFF</item>
+                  <item name="android:statusBarColor">#FFFFFF</item>
+
+              </style>
+
+          </resources>
+          EOF
+
+          cat > app/src/main/java/com/bourseyaar/app/MainActivity.java <<'EOF'
+          package com.bourseyaar.app;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.graphics.Color;
+          import android.graphics.Typeface;
+          import android.view.Gravity;
+          import android.widget.LinearLayout;
+          import android.widget.TextView;
+
+          public class MainActivity extends Activity {
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+
+                  LinearLayout main = new LinearLayout(this);
+                  main.setOrientation(LinearLayout.VERTICAL);
+                  main.setGravity(Gravity.CENTER);
+                  main.setPadding(30, 30, 30, 30);
+                  main.setBackgroundColor(Color.WHITE);
+
+                  TextView title = new TextView(this);
+                  title.setText("بورس‌یار");
+                  title.setTextSize(32);
+                  title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+                  title.setTextColor(Color.rgb(20, 80, 140));
+                  title.setGravity(Gravity.CENTER);
+
+                  TextView subtitle = new TextView(this);
+                  subtitle.setText(
+                      "تحلیل هوشمند بورس ایران\n\n" +
+                      "• اطلاعات کلی بازار\n" +
+                      "• پول هوشمند\n" +
+                      "• ورود و خروج پول\n" +
+                      "• تحلیل بنیادی\n" +
+                      "• تحلیل تکنیکال\n" +
+                      "• بررسی نمادها\n" +
+                      "• پیشنهادهای معاملاتی"
+                  );
+                  subtitle.setTextSize(18);
+                  subtitle.setTextColor(Color.DKGRAY);
+                  subtitle.setGravity(Gravity.CENTER);
+                  subtitle.setPadding(20, 40, 20, 20);
+
+                  main.addView(title);
+                  main.addView(subtitle);
+
+                  setContentView(main);
+              }
+          }
+          EOF
+
+      - name: Download Gradle
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.10.2-bin.zip
+          unzip -q gradle-8.10.2-bin.zip
+          export GRADLE_HOME=$PWD/gradle-8.10.2
+          export PATH=$GRADLE_HOME/bin:$PATH
+          gradle --version
 
       - name: Build APK
-        working-directory: project/BourseYaar_Test_Project
         run: |
-          gradle assembleDebug
+          export GRADLE_HOME=$PWD/gradle-8.10.2
+          export PATH=$GRADLE_HOME/bin:$PATH
+          gradle assembleDebug --stacktrace
 
       - name: Find APK
         run: |
-          echo "=== APK files ==="
-          find project -type f -name "*.apk" -exec ls -lh {} \;
+          find . -type f -name "*.apk" -print
 
-      - name: Prepare APK
-        run: |
-          APK=$(find project -type f -name "*.apk" | head -n 1)
-          test -n "$APK"
-          cp "$APK" BourseYaar.apk
-          ls -lh BourseYaar.apk
-
-      - name: Upload APK Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: BourseYaar-APK
-          path: BourseYaar.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-
-      - name: Create Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG="v1.0.${{ github.run_number }}"
-          gh release create "$TAG" BourseYaar.apk \
-            --title "BourseYaar APK $TAG" \
-            --notes "BourseYaar Android APK"
