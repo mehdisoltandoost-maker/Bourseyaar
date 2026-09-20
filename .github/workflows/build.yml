@@ -1,10 +1,10 @@
 name: Build BourseYaar APK
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   build:
@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -23,28 +23,17 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract project
-        run: |
-          mkdir -p project
-          unzip -o BourseYaar_Test_Project.zip -d project
-
-          echo "=== Project files ==="
-          find project -maxdepth 8 -type f | sort
-
       - name: Build APK
-        working-directory: project/BourseYaar_Test_Project
-        run: |
-          gradle assembleDebug
-          echo "=== Build completed ==="
+        run: ./gradlew assembleDebug
 
       - name: Find APK
         run: |
-          echo "=== APK files ==="
-          find project -type f -name "*.apk" -ls
+          echo "APK files:"
+          find . -type f -name "*.apk" -print
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: BourseYaar-APK
-          path: project/**/*.apk
+          path: "**/build/outputs/apk/debug/*.apk"
           if-no-files-found: error
