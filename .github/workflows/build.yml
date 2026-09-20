@@ -22,18 +22,23 @@ jobs:
 
       - name: Extract project
         run: |
-          mkdir project
-          unzip -o BourseYaar_Test_Project*.zip -d project
-          echo "Project files:"
-          find project -maxdepth 5 -type f | head -100
+          mkdir -p project
+          unzip -o BourseYaar_Test_Project.zip -d project
+
+          echo "=== Project files ==="
+          find project -maxdepth 6 -type f | sort
 
       - name: Find Gradle project
         run: |
           GRADLEW=$(find project -name gradlew -type f | head -1)
+
           if [ -z "$GRADLEW" ]; then
-            echo "ERROR: gradlew not found"
+            echo "gradlew پیدا نشد."
+            echo "فایل‌های موجود پروژه:"
+            find project -maxdepth 6 -type f | sort
             exit 1
           fi
+
           PROJECT_DIR=$(dirname "$GRADLEW")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
