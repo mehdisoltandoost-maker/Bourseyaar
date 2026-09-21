@@ -33,28 +33,19 @@ jobs:
           unzip -q gradle-8.10.2-bin.zip
           echo "$PWD/gradle-8.10.2/bin" >> "$GITHUB_PATH"
 
-      - name: Extract project
-        run: |
-          unzip -o BourseYaar-project.zip -d project
-
       - name: Build APK
         run: |
-          PROJECT_DIR=$(dirname "$(find "$GITHUB_WORKSPACE/project" \( -name settings.gradle -o -name settings.gradle.kts \) -type f | head -n 1)")
-          echo "PROJECT_DIR=$PROJECT_DIR"
-          cd "$PROJECT_DIR"
           gradle assembleDebug --stacktrace
 
       - name: Locate APK
         run: |
           echo "===== APK FILES ====="
-          find "$GITHUB_WORKSPACE/project" -type f -name "*.apk" -exec ls -lh {} \;
-          echo "===== ALL BUILD OUTPUTS ====="
-          find "$GITHUB_WORKSPACE/project" -type f -path "*/build/outputs/*" -exec ls -lh {} \;
+          find "$GITHUB_WORKSPACE" -type f -name "*.apk" -exec ls -lh {} \;
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: BourseYaar-APK
           path: |
-            project/**/build/outputs/**/*.apk
+            app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
