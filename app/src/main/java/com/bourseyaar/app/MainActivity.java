@@ -12,109 +12,98 @@ import android.widget.TextView;
 
 public class MainActivity extends Activity {
 
-    private LinearLayout main;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         showMainPage();
     }
 
-    private TextView makeTitle(String text) {
-        TextView title = new TextView(this);
-        title.setText(text);
-        title.setTextSize(28);
-        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        title.setGravity(Gravity.CENTER);
-        title.setTextColor(Color.BLACK);
-        title.setPadding(10, 20, 10, 20);
-        return title;
-    }
-
     private Button makeButton(String text) {
-        Button button = new Button(this);
-        button.setText(text);
-        button.setTextSize(16);
-        button.setAllCaps(false);
-        button.setPadding(10, 10, 10, 10);
-        return button;
+        Button b = new Button(this);
+        b.setText(text);
+        b.setTextSize(16);
+        b.setAllCaps(false);
+        return b;
     }
 
     private void showMainPage() {
 
-        main = new LinearLayout(this);
-        main.setOrientation(LinearLayout.VERTICAL);
-        main.setPadding(30, 40, 30, 30);
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(30, 40, 30, 30);
 
-        main.addView(makeTitle("بورس‌یار"));
+        TextView title = new TextView(this);
+        title.setText("بورس‌یار");
+        title.setTextSize(30);
+        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        title.setGravity(Gravity.CENTER);
+        layout.addView(title);
 
-        TextView subtitle = new TextView(this);
-        subtitle.setText("دستیار تحلیل بورس ایران");
-        subtitle.setTextSize(18);
-        subtitle.setGravity(Gravity.CENTER);
-        subtitle.setPadding(0, 10, 0, 30);
-        main.addView(subtitle);
+        TextView sub = new TextView(this);
+        sub.setText("دستیار تحلیل بورس ایران");
+        sub.setTextSize(18);
+        sub.setGravity(Gravity.CENTER);
+        layout.addView(sub);
 
-        String[] menus = {
-                "اطلاعات کلی بورس ایران",
-                "ورود و خروج پول",
-                "پول هوشمند",
-                "تحلیل تکنیکال",
-                "تحلیل بنیادی",
-                "سهم‌های ارزنده",
-                "بررسی سهام من"
+        String[] names = {
+            "اطلاعات کلی بورس ایران",
+            "ورود و خروج پول",
+            "پول هوشمند",
+            "تحلیل تکنیکال",
+            "تحلیل بنیادی",
+            "سهم‌های ارزنده",
+            "بررسی سهام من"
         };
 
-        for (final String menu : menus) {
+        for (final String name : names) {
 
-            Button button = makeButton(menu);
+            Button b = makeButton(name);
 
-            button.setOnClickListener(new View.OnClickListener() {
+            b.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    showPage(menu);
+                    showPage(name);
                 }
             });
 
-            main.addView(button);
+            layout.addView(b);
         }
 
-        setContentView(main);
+        setContentView(layout);
     }
 
-    private void showPage(String pageTitle) {
+    private void showPage(String name) {
 
-        LinearLayout page = new LinearLayout(this);
-        page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(30, 40, 30, 30);
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(30, 40, 30, 30);
 
-        page.addView(makeTitle(pageTitle));
+        TextView title = new TextView(this);
+        title.setText(name);
+        title.setTextSize(26);
+        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        title.setGravity(Gravity.CENTER);
+        layout.addView(title);
 
-        TextView info = new TextView(this);
+        TextView text = new TextView(this);
+        text.setText("صفحه «" + name + "» با موفقیت باز شد.");
+        text.setTextSize(20);
+        text.setTextColor(Color.DKGRAY);
+        text.setGravity(Gravity.CENTER);
+        text.setPadding(10, 50, 10, 50);
+        layout.addView(text);
 
-        info.setText(
-                "این بخش از بورس‌یار آماده است.\n\n"
-                + "در مرحله بعد اطلاعات واقعی بازار، "
-                + "تحلیل تکنیکال و بنیادی به آن اضافه می‌شود."
-        );
+        Button back = makeButton("بازگشت به صفحه اصلی");
 
-        info.setTextSize(18);
-        info.setTextColor(Color.DKGRAY);
-        info.setGravity(Gravity.CENTER);
-        info.setPadding(10, 30, 10, 30);
-        page.addView(info);
-
-        Button backButton = makeButton("بازگشت به صفحه اصلی");
-
-        backButton.setOnClickListener(new View.OnClickListener() {
+        back.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 showMainPage();
             }
         });
 
-        page.addView(backButton);
+        layout.addView(back);
 
-        setContentView(page);
+        setContentView(layout);
     }
 }
