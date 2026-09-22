@@ -91,6 +91,7 @@ public class MainActivity extends Activity {
         page.addView(makeTitle(pageTitle));
 
         TextView info = new TextView(this);
+
         info.setText(
                 "این بخش از بورس‌یار آماده است.\n\n"
                 + "در مرحله بعد اطلاعات واقعی بازار، "
