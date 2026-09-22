@@ -12,7 +12,7 @@ import android.widget.TextView;
 
 public class MainActivity extends Activity {
 
-    LinearLayout main;
+    private LinearLayout main;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,14 +103,17 @@ public class MainActivity extends Activity {
                     + "ارزش معاملات\n"
                     + "حجم معاملات\n"
                     + "تعداد معاملات";
+
         } else if (pageTitle.equals("ورود و خروج پول")) {
             message = "ورود و خروج پول\n\n"
                     + "بررسی ورود و خروج نقدینگی حقیقی\n"
                     + "وضعیت خرید و فروش حقیقی و حقوقی";
+
         } else if (pageTitle.equals("پول هوشمند")) {
             message = "پول هوشمند\n\n"
                     + "شناسایی ورود نقدینگی غیرعادی\n"
                     + "بررسی حجم معاملات و قدرت خریداران";
+
         } else if (pageTitle.equals("تحلیل تکنیکال")) {
             message = "تحلیل تکنیکال\n\n"
                     + "روند سهم\n"
@@ -118,6 +121,7 @@ public class MainActivity extends Activity {
                     + "RSI\n"
                     + "MACD\n"
                     + "میانگین‌های متحرک";
+
         } else if (pageTitle.equals("تحلیل بنیادی")) {
             message = "تحلیل بنیادی\n\n"
                     + "بررسی سودآوری شرکت\n"
@@ -125,10 +129,12 @@ public class MainActivity extends Activity {
                     + "P/E\n"
                     + "فروش و سود شرکت\n"
                     + "وضعیت بنیادی";
+
         } else if (pageTitle.equals("سهم‌های ارزنده")) {
             message = "سهم‌های ارزنده\n\n"
                     + "ترکیب تحلیل بنیادی و تکنیکال\n"
                     + "برای شناسایی نمادهای قابل بررسی";
+
         } else {
             message = "بررسی سهام من\n\n"
                     + "امکان اضافه کردن نمادهای مورد نظر\n"
