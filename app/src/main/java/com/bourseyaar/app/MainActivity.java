@@ -46,8 +46,7 @@ public class MainActivity extends Activity {
         main.setOrientation(LinearLayout.VERTICAL);
         main.setPadding(30, 40, 30, 30);
 
-        TextView title = makeTitle("بورس‌یار");
-        main.addView(title);
+        main.addView(makeTitle("بورس‌یار"));
 
         TextView subtitle = new TextView(this);
         subtitle.setText("دستیار تحلیل بورس ایران");
@@ -57,17 +56,16 @@ public class MainActivity extends Activity {
         main.addView(subtitle);
 
         String[] menus = {
-                "اطلاعات کلی بورس ایران",
-                "ورود و خروج پول",
-                "پول هوشمند",
-                "تحلیل تکنیکال",
-                "تحلیل بنیادی",
-                "سهم‌های ارزنده",
-                "بررسی سهام من"
+            "اطلاعات کلی بورس ایران",
+            "ورود و خروج پول",
+            "پول هوشمند",
+            "تحلیل تکنیکال",
+            "تحلیل بنیادی",
+            "سهم‌های ارزنده",
+            "بررسی سهام من"
         };
 
         for (final String menu : menus) {
-
             Button button = makeButton(menu);
 
             button.setOnClickListener(new View.OnClickListener() {
@@ -89,59 +87,12 @@ public class MainActivity extends Activity {
         page.setOrientation(LinearLayout.VERTICAL);
         page.setPadding(30, 40, 30, 30);
 
-        TextView title = makeTitle(pageTitle);
-        page.addView(title);
+        page.addView(makeTitle(pageTitle));
 
         TextView info = new TextView(this);
-
-        String message;
-
-        if (pageTitle.equals("اطلاعات کلی بورس ایران")) {
-            message = "اطلاعات کلی بازار بورس ایران\n\n"
-                    + "شاخص کل\n"
-                    + "شاخص هم‌وزن\n"
-                    + "ارزش معاملات\n"
-                    + "حجم معاملات\n"
-                    + "تعداد معاملات";
-
-        } else if (pageTitle.equals("ورود و خروج پول")) {
-            message = "ورود و خروج پول\n\n"
-                    + "بررسی ورود و خروج نقدینگی حقیقی\n"
-                    + "وضعیت خرید و فروش حقیقی و حقوقی";
-
-        } else if (pageTitle.equals("پول هوشمند")) {
-            message = "پول هوشمند\n\n"
-                    + "شناسایی ورود نقدینگی غیرعادی\n"
-                    + "بررسی حجم معاملات و قدرت خریداران";
-
-        } else if (pageTitle.equals("تحلیل تکنیکال")) {
-            message = "تحلیل تکنیکال\n\n"
-                    + "روند سهم\n"
-                    + "حمایت و مقاومت\n"
-                    + "RSI\n"
-                    + "MACD\n"
-                    + "میانگین‌های متحرک";
-
-        } else if (pageTitle.equals("تحلیل بنیادی")) {
-            message = "تحلیل بنیادی\n\n"
-                    + "بررسی سودآوری شرکت\n"
-                    + "EPS\n"
-                    + "P/E\n"
-                    + "فروش و سود شرکت\n"
-                    + "وضعیت بنیادی";
-
-        } else if (pageTitle.equals("سهم‌های ارزنده")) {
-            message = "سهم‌های ارزنده\n\n"
-                    + "ترکیب تحلیل بنیادی و تکنیکال\n"
-                    + "برای شناسایی نمادهای قابل بررسی";
-
-        } else {
-            message = "بررسی سهام من\n\n"
-                    + "امکان اضافه کردن نمادهای مورد نظر\n"
-                    + "و بررسی وضعیت آنها";
-        }
-
-        info.setText(message);
+        info.setText("این بخش از بورس‌یار آماده است.\n\n"
+                + "در مرحله بعد اطلاعات واقعی بازار، "
+                + "تحلیل تکنیکال و بنیادی به آن اضافه می‌شود.");
         info.setTextSize(18);
         info.setTextColor(Color.DKGRAY);
         info.setGravity(Gravity.CENTER);
