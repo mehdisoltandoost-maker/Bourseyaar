@@ -11,12 +11,11 @@ import android.widget.TextView;
 
 public class MainActivity extends Activity {
 
-    LinearLayout layout;
+    private LinearLayout layout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         showMainPage();
     }
 
@@ -26,7 +25,7 @@ public class MainActivity extends Activity {
         t.setTextSize(24);
         t.setTextColor(Color.WHITE);
         t.setGravity(Gravity.CENTER);
-        t.setPadding(10, 30, 10, 30);
+        t.setPadding(10, 25, 10, 25);
         return t;
     }
 
@@ -35,7 +34,17 @@ public class MainActivity extends Activity {
         b.setText(text);
         b.setTextSize(17);
         b.setAllCaps(false);
-        b.setPadding(10, 15, 10, 15);
+        b.setClickable(true);
+        b.setFocusable(true);
+
+        LinearLayout.LayoutParams p =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT);
+
+        p.setMargins(0, 8, 0, 8);
+        b.setLayoutParams(p);
+
         return b;
     }
 
@@ -44,7 +53,6 @@ public class MainActivity extends Activity {
         layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(20, 20, 20, 20);
-        layout.setGravity(Gravity.CENTER_HORIZONTAL);
 
         TextView header = title("بورس‌یار");
         header.setBackgroundColor(Color.rgb(30, 100, 180));
@@ -66,33 +74,61 @@ public class MainActivity extends Activity {
         layout.addView(valuable);
         layout.addView(portfolio);
 
-        market.setOnClickListener(v ->
+        market.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
                 showPage("اطلاعات کلی بورس ایران",
-                        "شاخص کل\nشاخص هم‌وزن\nارزش معاملات\nحجم معاملات"));
+                        "شاخص کل\n\nشاخص هم‌وزن\n\nارزش معاملات\n\nحجم معاملات");
+            }
+        });
 
-        fundamental.setOnClickListener(v ->
+        fundamental.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
                 showPage("بهترین نمادها از نظر بنیادی",
-                        "در این بخش نمادها بر اساس اطلاعات بنیادی بررسی می‌شوند."));
+                        "بررسی نمادها بر اساس اطلاعات بنیادی.");
+            }
+        });
 
-        technical.setOnClickListener(v ->
+        technical.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
                 showPage("تحلیل تکنیکال",
-                        "RSI\nMACD\nمیانگین متحرک\nحمایت و مقاومت"));
+                        "RSI\n\nMACD\n\nمیانگین متحرک\n\nحمایت و مقاومت");
+            }
+        });
 
-        smartMoney.setOnClickListener(v ->
+        smartMoney.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
                 showPage("پول هوشمند",
-                        "بررسی ورود پول هوشمند به نمادها."));
+                        "بررسی ورود پول هوشمند به نمادها.");
+            }
+        });
 
-        flow.setOnClickListener(v ->
+        flow.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
                 showPage("ورود و خروج پول",
-                        "بررسی ورود و خروج پول حقیقی."));
+                        "بررسی ورود و خروج پول حقیقی.");
+            }
+        });
 
-        valuable.setOnClickListener(v ->
+        valuable.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
                 showPage("سهم‌های ارزنده",
-                        "ترکیب تحلیل بنیادی و تکنیکال برای شناسایی نمادهای ارزنده."));
+                        "ترکیب تحلیل بنیادی و تکنیکال برای شناسایی نمادهای ارزنده.");
+            }
+        });
 
-        portfolio.setOnClickListener(v ->
+        portfolio.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
                 showPage("سهام‌های من",
-                        "در این بخش می‌توان سهام‌های موجود در سبد شما را بررسی کرد."));
+                        "در این بخش می‌توان سهام‌های موجود در سبد شما را بررسی کرد.");
+            }
+        });
 
         setContentView(layout);
     }
@@ -101,18 +137,17 @@ public class MainActivity extends Activity {
 
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(25, 25, 25, 25);
+        page.setPadding(20, 20, 20, 20);
 
         TextView header = title(pageTitle);
         header.setBackgroundColor(Color.rgb(30, 100, 180));
-
         page.addView(header);
 
         TextView content = new TextView(this);
         content.setText(text);
         content.setTextSize(18);
-        content.setPadding(15, 40, 15, 40);
-
+        content.setTextColor(Color.BLACK);
+        content.setPadding(15, 35, 15, 35);
         page.addView(content);
 
         Button back = new Button(this);
@@ -122,7 +157,12 @@ public class MainActivity extends Activity {
 
         page.addView(back);
 
-        back.setOnClickListener(v -> showMainPage());
+        back.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showMainPage();
+            }
+        });
 
         setContentView(page);
     }
