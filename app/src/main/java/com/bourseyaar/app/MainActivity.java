@@ -19,7 +19,6 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -141,26 +140,18 @@ public class MainActivity extends Activity {
                 v -> showPage(
                         "تحلیل بنیادی",
                         "این بخش در مرحله بعد با اطلاعات بنیادی نمادها تکمیل می‌شود.\n\n" +
-                        "EPS\n\n" +
-                        "P/E\n\n" +
-                        "رشد فروش\n\n" +
-                        "سودآوری\n\n" +
-                        "ارزش ذاتی"));
+                        "EPS\n\nP/E\n\nرشد فروش\n\nسودآوری\n\nارزش ذاتی"));
 
         technical.setOnClickListener(
                 v -> showPage(
                         "تحلیل تکنیکال",
                         "ابزارهای تحلیل تکنیکال:\n\n" +
-                        "RSI\n\n" +
-                        "MACD\n\n" +
-                        "میانگین متحرک\n\n" +
-                        "حمایت و مقاومت\n\n" +
-                        "روند سهم"));
+                        "RSI\n\nMACD\n\nمیانگین متحرک\n\nحمایت و مقاومت\n\nروند سهم"));
 
         valuable.setOnClickListener(
                 v -> showPage(
                         "سهم‌های ارزنده",
-                        "در مرحله بعد نمادها بر اساس ترکیب بنیادی، تکنیکال و جریان پول بررسی می‌شوند."));
+                        "در مرحله بعد نمادها بر اساس بنیادی، تکنیکال و جریان پول بررسی می‌شوند."));
 
         portfolio.setOnClickListener(
                 v -> showPage(
@@ -184,12 +175,9 @@ public class MainActivity extends Activity {
 
         page.addView(header);
 
-        TextView status =
-                new TextView(this);
-
+        TextView status = new TextView(this);
         status.setText(
                 "⏳ در حال دریافت اطلاعات بازار...");
-
         status.setTextSize(18);
         status.setPadding(15, 30, 15, 30);
 
@@ -229,11 +217,9 @@ public class MainActivity extends Activity {
 
         page.addView(header);
 
-        TextView status =
-                new TextView(this);
-
+        TextView status = new TextView(this);
         status.setText(
-                "⏳ در حال دریافت جریان پول حقیقی...");
+                "⏳ در حال دریافت اطلاعات پول حقیقی...");
         status.setTextSize(17);
         status.setPadding(10, 25, 10, 25);
 
@@ -273,11 +259,9 @@ public class MainActivity extends Activity {
 
         page.addView(header);
 
-        TextView status =
-                new TextView(this);
-
+        TextView status = new TextView(this);
         status.setText(
-                "⏳ در حال بررسی جریان پول و قدرت خرید...");
+                "⏳ در حال بررسی جریان پول...");
         status.setTextSize(17);
         status.setPadding(10, 25, 10, 25);
 
@@ -357,7 +341,6 @@ public class MainActivity extends Activity {
                 (hostname, session) -> true);
 
         connection.setRequestMethod("GET");
-
         connection.setConnectTimeout(20000);
         connection.setReadTimeout(20000);
 
@@ -399,11 +382,23 @@ public class MainActivity extends Activity {
         return result.toString();
     }
 
+    private double getDouble(
+            JSONObject object,
+            String key) {
+
+        if (!object.has(key) ||
+                object.isNull(key)) {
+            return 0;
+        }
+
+        return object.optDouble(key, 0);
+    }
+
     private String formatNumber(double value) {
 
         if (Double.isNaN(value) ||
                 Double.isInfinite(value)) {
-            return "—";
+            return "0";
         }
 
         DecimalFormatSymbols symbols =
@@ -418,76 +413,30 @@ public class MainActivity extends Activity {
         return format.format(value);
     }
 
-    private String number(
-            JSONObject object,
-            String key) {
+    private String money(double value) {
 
-        if (!object.has(key) ||
-                object.isNull(key)) {
-            return "—";
+        double abs = Math.abs(value);
+
+        if (abs >= 1000000000000.0) {
+            return formatNumber(
+                    value / 1000000000000.0)
+                    + " همت";
         }
 
-        double value =
-                object.optDouble(
-                        key,
-                        Double.NaN);
-
-        return formatNumber(value);
-    }
-
-    private double doubleValue(
-            JSONObject object,
-            String key) {
-
-        if (!object.has(key) ||
-                object.isNull(key)) {
-            return 0;
+        if (abs >= 1000000000.0) {
+            return formatNumber(
+                    value / 1000000000.0)
+                    + " میلیارد ریال";
         }
 
-        return object.optDouble(
-                key,
-                0);
-    }
-
-    private String percent(
-            JSONObject object,
-            String key) {
-
-        double value =
-                doubleValue(
-                        object,
-                        key);
-
-        return formatNumber(value) + "%";
-    }
-
-    private String time(
-            JSONObject object) {
-
-        int value =
-                object.optInt(
-                        "hEven",
-                        0);
-
-        if (value <= 0) {
-            return "—";
+        if (abs >= 1000000.0) {
+            return formatNumber(
+                    value / 1000000.0)
+                    + " میلیون ریال";
         }
 
-        int hour =
-                value / 10000;
-
-        int minute =
-                (value / 100) % 100;
-
-        int second =
-                value % 100;
-
-        return String.format(
-                Locale.US,
-                "%02d:%02d:%02d",
-                hour,
-                minute,
-                second);
+        return formatNumber(value)
+                + " ریال";
     }
 
     private void loadMarketData(
@@ -511,8 +460,7 @@ public class MainActivity extends Activity {
                         new JSONObject(json);
 
                 JSONArray indexes =
-                        root.optJSONArray(
-                                "indexB1");
+                        root.optJSONArray("indexB1");
 
                 if (indexes == null ||
                         indexes.length() == 0) {
@@ -539,6 +487,21 @@ public class MainActivity extends Activity {
                                     "lVal30",
                                     "شاخص");
 
+                    double value =
+                            getDouble(
+                                    item,
+                                    "xDrNivJIdx004");
+
+                    double change =
+                            getDouble(
+                                    item,
+                                    "indexChange");
+
+                    double percent =
+                            getDouble(
+                                    item,
+                                    "xVarIdxJRfV");
+
                     text.append(
                             "━━━━━━━━━━━━━━━━━━\n");
 
@@ -549,32 +512,20 @@ public class MainActivity extends Activity {
                     text.append(
                             "مقدار: ")
                             .append(
-                                    number(
-                                            item,
-                                            "xDrNivJIdx004"))
+                                    formatNumber(value))
                             .append("\n");
 
                     text.append(
                             "تغییر: ")
                             .append(
-                                    number(
-                                            item,
-                                            "indexChange"))
+                                    formatNumber(change))
                             .append("\n");
 
                     text.append(
                             "درصد تغییر: ")
                             .append(
-                                    percent(
-                                            item,
-                                            "xVarIdxJRfV"))
-                            .append("\n");
-
-                    text.append(
-                            "زمان: ")
-                            .append(
-                                    time(item))
-                            .append("\n\n");
+                                    formatNumber(percent))
+                            .append("%\n\n");
                 }
 
                 text.append(
@@ -644,12 +595,10 @@ public class MainActivity extends Activity {
                                 "&RefID=0");
 
                 JSONObject clientRoot =
-                        new JSONObject(
-                                clientJson);
+                        new JSONObject(clientJson);
 
                 JSONObject marketRoot =
-                        new JSONObject(
-                                marketJson);
+                        new JSONObject(marketJson);
 
                 JSONArray clients =
                         clientRoot.optJSONArray(
@@ -659,40 +608,41 @@ public class MainActivity extends Activity {
                         marketRoot.optJSONArray(
                                 "marketwatch");
 
-                if (clients == null) {
-                    throw new Exception(
-                            "اطلاعات حقیقی و حقوقی دریافت نشد");
-                }
+                if (clients == null ||
+                        clients.length() == 0) {
 
-                if (market == null) {
                     throw new Exception(
-                            "اطلاعات بازار دریافت نشد");
+                            "فهرست حقیقی و حقوقی خالی است");
                 }
 
                 Map<String, JSONObject>
                         marketMap =
                         new HashMap<>();
 
-                for (int i = 0;
-                        i < market.length();
-                        i++) {
+                if (market != null) {
 
-                    JSONObject item =
-                            market.getJSONObject(i);
+                    for (int i = 0;
+                            i < market.length();
+                            i++) {
 
-                    String code =
-                            item.optString(
-                                    "insCode",
-                                    "");
+                        JSONObject item =
+                                market.getJSONObject(i);
 
-                    if (!code.isEmpty()) {
-                        marketMap.put(
-                                code,
-                                item);
+                        String code =
+                                item.optString(
+                                        "insCode",
+                                        "");
+
+                        if (!code.isEmpty()) {
+                            marketMap.put(
+                                    code,
+                                    item);
+                        }
                     }
                 }
 
-                ArrayList<FlowItem> list =
+                ArrayList<FlowItem>
+                        list =
                         new ArrayList<>();
 
                 for (int i = 0;
@@ -707,81 +657,75 @@ public class MainActivity extends Activity {
                                     "insCode",
                                     "");
 
-                    JSONObject marketItem =
-                            marketMap.get(code);
-
-                    if (marketItem == null) {
-                        continue;
-                    }
-
-                    String symbol =
-                            marketItem.optString(
-                                    "lVal18AFC",
-                                    "");
-
-                    String name =
-                            marketItem.optString(
-                                    "lVal30",
-                                    symbol);
-
-                    if (symbol.isEmpty()) {
-                        continue;
-                    }
-
                     double buyI =
-                            doubleValue(
+                            getDouble(
                                     client,
                                     "buy_I_Volume");
 
                     double sellI =
-                            doubleValue(
+                            getDouble(
                                     client,
                                     "sell_I_Volume");
 
-                    double price =
-                            doubleValue(
-                                    marketItem,
-                                    "pDrCotVal");
-
-                    if (price <= 0) {
-                        price =
-                                doubleValue(
-                                        marketItem,
-                                        "pl");
-                    }
-
-                    double netVolume =
-                            buyI - sellI;
-
-                    double netValue =
-                            netVolume * price;
-
-                    if (Math.abs(netValue) <
-                            100000000) {
-                        continue;
-                    }
-
                     double buyN =
-                            doubleValue(
+                            getDouble(
                                     client,
                                     "buy_N_Volume");
 
                     double sellN =
-                            doubleValue(
+                            getDouble(
                                     client,
                                     "sell_N_Volume");
+
+                    double netVolume =
+                            buyI - sellI;
+
+                    JSONObject marketItem =
+                            marketMap.get(code);
+
+                    String symbol = code;
+                    double price = 0;
+
+                    if (marketItem != null) {
+
+                        symbol =
+                                marketItem.optString(
+                                        "lVal18AFC",
+                                        code);
+
+                        price =
+                                getDouble(
+                                        marketItem,
+                                        "pClosing");
+
+                        if (price == 0) {
+                            price =
+                                    getDouble(
+                                            marketItem,
+                                            "pDrCotVal");
+                        }
+
+                        if (price == 0) {
+                            price =
+                                    getDouble(
+                                            marketItem,
+                                            "pl");
+                        }
+                    }
 
                     FlowItem item =
                             new FlowItem();
 
                     item.symbol = symbol;
-                    item.name = name;
                     item.buyI = buyI;
                     item.sellI = sellI;
                     item.buyN = buyN;
                     item.sellN = sellN;
+                    item.netVolume =
+                            netVolume;
                     item.price = price;
-                    item.netValue = netValue;
+                    item.netValue =
+                            netVolume * price;
 
                     list.add(item);
                 }
@@ -797,13 +741,13 @@ public class MainActivity extends Activity {
                         new StringBuilder();
 
                 text.append(
-                        "🔄 بیشترین ورود پول حقیقی\n\n");
+                        "🟢 بیشترین ورود پول حقیقی\n\n");
 
                 int count = 0;
 
                 for (FlowItem item : list) {
 
-                    if (item.netValue <= 0) {
+                    if (item.netVolume <= 0) {
                         continue;
                     }
 
@@ -815,13 +759,6 @@ public class MainActivity extends Activity {
                             .append("\n");
 
                     text.append(
-                            "ورود خالص پول: ")
-                            .append(
-                                    money(
-                                            item.netValue))
-                            .append("\n");
-
-                    text.append(
                             "خرید حقیقی: ")
                             .append(
                                     formatNumber(
@@ -835,6 +772,23 @@ public class MainActivity extends Activity {
                                             item.sellI))
                             .append("\n");
 
+                    text.append(
+                            "خالص حجم پول: ")
+                            .append(
+                                    formatNumber(
+                                            item.netVolume))
+                            .append("\n");
+
+                    if (item.price > 0) {
+
+                        text.append(
+                                "ارزش خالص تقریبی: ")
+                                .append(
+                                        money(
+                                                item.netValue))
+                                .append("\n");
+                    }
+
                     count++;
 
                     if (count >= 15) {
@@ -843,16 +797,13 @@ public class MainActivity extends Activity {
                 }
 
                 text.append(
-                        "\n━━━━━━━━━━━━━━━━━━\n\n");
-
-                text.append(
-                        "🔴 بیشترین خروج پول حقیقی\n\n");
+                        "\n🔴 بیشترین خروج پول حقیقی\n\n");
 
                 count = 0;
 
                 for (FlowItem item : list) {
 
-                    if (item.netValue >= 0) {
+                    if (item.netVolume >= 0) {
                         continue;
                     }
 
@@ -864,14 +815,6 @@ public class MainActivity extends Activity {
                             .append("\n");
 
                     text.append(
-                            "خروج خالص پول: ")
-                            .append(
-                                    money(
-                                            Math.abs(
-                                                    item.netValue)))
-                            .append("\n");
-
-                    text.append(
                             "خرید حقیقی: ")
                             .append(
                                     formatNumber(
@@ -884,6 +827,23 @@ public class MainActivity extends Activity {
                                     formatNumber(
                                             item.sellI))
                             .append("\n");
+
+                    text.append(
+                            "خالص حجم پول: ")
+                            .append(
+                                    formatNumber(
+                                            item.netVolume))
+                            .append("\n");
+
+                    if (item.price > 0) {
+
+                        text.append(
+                                "ارزش خالص تقریبی: ")
+                                .append(
+                                        money(
+                                                item.netValue))
+                                .append("\n");
+                    }
 
                     count++;
 
@@ -899,7 +859,7 @@ public class MainActivity extends Activity {
 
                 result =
                         "❌ دریافت ورود و خروج پول انجام نشد.\n\n" +
-                        "نوع خطا: " +
+                        "خطا: " +
                         e.getClass()
                                 .getSimpleName() +
                         "\n\n" +
@@ -920,7 +880,7 @@ public class MainActivity extends Activity {
             TextView status) {
 
         status.setText(
-                "⏳ در حال شناسایی جریان‌های غیرعادی پول...");
+                "⏳ در حال شناسایی نمادهای دارای جریان پول...");
 
         new Thread(() -> {
 
@@ -954,12 +914,10 @@ public class MainActivity extends Activity {
                                 "&RefID=0");
 
                 JSONObject clientRoot =
-                        new JSONObject(
-                                clientJson);
+                        new JSONObject(clientJson);
 
                 JSONObject marketRoot =
-                        new JSONObject(
-                                marketJson);
+                        new JSONObject(marketJson);
 
                 JSONArray clients =
                         clientRoot.optJSONArray(
@@ -970,32 +928,35 @@ public class MainActivity extends Activity {
                                 "marketwatch");
 
                 if (clients == null ||
-                        market == null) {
+                        clients.length() == 0) {
 
                     throw new Exception(
-                            "داده کافی دریافت نشد");
+                            "اطلاعات پول حقیقی دریافت نشد");
                 }
 
                 Map<String, JSONObject>
                         marketMap =
                         new HashMap<>();
 
-                for (int i = 0;
-                        i < market.length();
-                        i++) {
+                if (market != null) {
 
-                    JSONObject m =
-                            market.getJSONObject(i);
+                    for (int i = 0;
+                            i < market.length();
+                            i++) {
 
-                    String code =
-                            m.optString(
-                                    "insCode",
-                                    "");
+                        JSONObject m =
+                                market.getJSONObject(i);
 
-                    if (!code.isEmpty()) {
-                        marketMap.put(
-                                code,
-                                m);
+                        String code =
+                                m.optString(
+                                        "insCode",
+                                        "");
+
+                        if (!code.isEmpty()) {
+                            marketMap.put(
+                                    code,
+                                    m);
+                        }
                     }
                 }
 
@@ -1015,131 +976,135 @@ public class MainActivity extends Activity {
                                     "insCode",
                                     "");
 
-                    JSONObject m =
-                            marketMap.get(code);
-
-                    if (m == null) {
-                        continue;
-                    }
-
-                    String symbol =
-                            m.optString(
-                                    "lVal18AFC",
-                                    "");
-
-                    if (symbol.isEmpty()) {
-                        continue;
-                    }
-
                     double buyI =
-                            doubleValue(
+                            getDouble(
                                     c,
                                     "buy_I_Volume");
 
                     double sellI =
-                            doubleValue(
+                            getDouble(
                                     c,
                                     "sell_I_Volume");
 
                     double buyN =
-                            doubleValue(
+                            getDouble(
                                     c,
                                     "buy_N_Volume");
 
                     double sellN =
-                            doubleValue(
+                            getDouble(
                                     c,
                                     "sell_N_Volume");
 
-                    double price =
-                            doubleValue(
-                                    m,
-                                    "pDrCotVal");
-
-                    if (price <= 0) {
-                        price =
-                                doubleValue(
-                                        m,
-                                        "pl");
-                    }
-
-                    if (price <= 0) {
-                        continue;
-                    }
-
-                    double net =
-                            (buyI - sellI)
-                                    * price;
-
-                    double buyPower = 0;
-
                     double buyCount =
-                            doubleValue(
+                            getDouble(
                                     c,
                                     "buy_CountI");
 
                     double sellCount =
-                            doubleValue(
+                            getDouble(
                                     c,
                                     "sell_CountI");
+
+                    double netVolume =
+                            buyI - sellI;
+
+                    if (netVolume <= 0) {
+                        continue;
+                    }
+
+                    double power = 0;
 
                     if (buyCount > 0 &&
                             sellCount > 0) {
 
                         double avgBuy =
-                                buyI /
-                                        buyCount;
+                                buyI / buyCount;
 
                         double avgSell =
-                                sellI /
-                                        sellCount;
+                                sellI / sellCount;
 
                         if (avgSell > 0) {
-                            buyPower =
+                            power =
                                     avgBuy /
-                                            avgSell;
+                                    avgSell;
                         }
                     }
 
-                    double legalFlow =
-                            (buyN - sellN)
-                                    * price;
+                    JSONObject m =
+                            marketMap.get(code);
+
+                    String symbol = code;
+                    double price = 0;
+
+                    if (m != null) {
+
+                        symbol =
+                                m.optString(
+                                        "lVal18AFC",
+                                        code);
+
+                        price =
+                                getDouble(
+                                        m,
+                                        "pClosing");
+
+                        if (price == 0) {
+                            price =
+                                    getDouble(
+                                            m,
+                                            "pDrCotVal");
+                        }
+
+                        if (price == 0) {
+                            price =
+                                    getDouble(
+                                            m,
+                                            "pl");
+                        }
+                    }
+
+                    double netValue =
+                            netVolume * price;
 
                     double score = 0;
 
-                    if (net > 0) {
-                        score += 50;
+                    if (netVolume > 0) {
+                        score += 40;
                     }
 
-                    if (buyPower > 1.5) {
+                    if (power >= 2.0) {
+                        score += 40;
+                    } else if (power >= 1.5) {
                         score += 30;
-                    } else if (buyPower > 1.2) {
+                    } else if (power >= 1.2) {
                         score += 20;
                     }
 
-                    if (legalFlow < 0) {
+                    if (buyN < sellN) {
                         score += 20;
                     }
 
-                    if (score >= 50) {
-
-                        SmartItem item =
-                                new SmartItem();
-
-                        item.symbol =
-                                symbol;
-
-                        item.net =
-                                net;
-
-                        item.power =
-                                buyPower;
-
-                        item.score =
-                                score;
-
-                        list.add(item);
+                    if (score < 40) {
+                        continue;
                     }
+
+                    SmartItem item =
+                            new SmartItem();
+
+                    item.symbol = symbol;
+                    item.buyI = buyI;
+                    item.sellI = sellI;
+                    item.netVolume =
+                            netVolume;
+                    item.netValue =
+                            netValue;
+                    item.power =
+                            power;
+                    item.score =
+                            score;
+
+                    list.add(item);
                 }
 
                 Collections.sort(
@@ -1156,7 +1121,7 @@ public class MainActivity extends Activity {
                         "💵 نمادهای دارای نشانه جریان پول\n\n");
 
                 text.append(
-                        "⚠️ این فهرست یک فیلتر تحلیلی است و به‌تنهایی سیگنال خرید یا فروش نیست.\n\n");
+                        "این فهرست یک فیلتر تحلیلی است و به‌تنهایی سیگنال خرید یا فروش نیست.\n\n");
 
                 int count = 0;
 
@@ -1172,11 +1137,24 @@ public class MainActivity extends Activity {
                             .append("\n");
 
                     text.append(
-                            "جریان خالص پول: ")
+                            "خرید حقیقی: ")
                             .append(
-                                    money(
-                                            Math.abs(
-                                                    item.net)))
+                                    formatNumber(
+                                            item.buyI))
+                            .append("\n");
+
+                    text.append(
+                            "فروش حقیقی: ")
+                            .append(
+                                    formatNumber(
+                                            item.sellI))
+                            .append("\n");
+
+                    text.append(
+                            "خالص ورود پول: ")
+                            .append(
+                                    formatNumber(
+                                            item.netVolume))
                             .append("\n");
 
                     text.append(
@@ -1185,6 +1163,16 @@ public class MainActivity extends Activity {
                                     formatNumber(
                                             item.power))
                             .append("\n");
+
+                    if (item.netValue > 0) {
+
+                        text.append(
+                                "ارزش تقریبی ورود: ")
+                                .append(
+                                        money(
+                                                item.netValue))
+                                .append("\n");
+                    }
 
                     text.append(
                             "امتیاز فیلتر: ")
@@ -1203,8 +1191,7 @@ public class MainActivity extends Activity {
                 if (count == 0) {
 
                     text.append(
-                            "در حال حاضر نماد مناسبی با " +
-                            "معیارهای این فیلتر پیدا نشد.");
+                            "در حال حاضر نمادی با معیارهای این فیلتر پیدا نشد.");
                 }
 
                 result =
@@ -1214,6 +1201,7 @@ public class MainActivity extends Activity {
 
                 result =
                         "❌ تحلیل پول هوشمند انجام نشد.\n\n" +
+                        "خطا: " +
                         e.getClass()
                                 .getSimpleName() +
                         "\n\n" +
@@ -1228,33 +1216,6 @@ public class MainActivity extends Activity {
                             finalResult));
 
         }).start();
-    }
-
-    private String money(double value) {
-
-        if (value >= 1000000000000.0) {
-
-            return formatNumber(
-                    value / 1000000000000.0)
-                    + " همت";
-        }
-
-        if (value >= 1000000000.0) {
-
-            return formatNumber(
-                    value / 1000000000.0)
-                    + " میلیارد ریال";
-        }
-
-        if (value >= 1000000.0) {
-
-            return formatNumber(
-                    value / 1000000.0)
-                    + " میلیون ریال";
-        }
-
-        return formatNumber(value)
-                + " ریال";
     }
 
     private void showPage(
@@ -1298,7 +1259,6 @@ public class MainActivity extends Activity {
     private static class FlowItem {
 
         String symbol;
-        String name;
 
         double buyI;
         double sellI;
@@ -1306,6 +1266,7 @@ public class MainActivity extends Activity {
         double buyN;
         double sellN;
 
+        double netVolume;
         double price;
         double netValue;
     }
@@ -1314,7 +1275,12 @@ public class MainActivity extends Activity {
 
         String symbol;
 
-        double net;
+        double buyI;
+        double sellI;
+
+        double netVolume;
+        double netValue;
+
         double power;
         double score;
     }
