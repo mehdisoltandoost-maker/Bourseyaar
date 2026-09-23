@@ -8,9 +8,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.os.Handler;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import android.content.Intent;
+import android.net.Uri;
 
 public class MainActivity extends Activity {
 
@@ -119,67 +118,48 @@ public class MainActivity extends Activity {
         header.setBackgroundColor(Color.rgb(30, 100, 180));
         page.addView(header);
 
-        TextView status = new TextView(this);
-        status.setText("در حال بررسی اتصال اینترنت...");
-        status.setTextSize(18);
-        status.setPadding(15, 30, 15, 30);
-        page.addView(status);
+        TextView info = new TextView(this);
+        info.setText(
+                "اتصال اینترنت برقرار است.\n\n" +
+                "برای آزمایش دسترسی به اطلاعات بورس، " +
+                "دکمه زیر را بزنید:"
+        );
+        info.setTextSize(18);
+        info.setPadding(15, 30, 15, 30);
+        page.addView(info);
+
+        Button tsetmc = new Button(this);
+        tsetmc.setText("🌐 باز کردن TSETMC");
+        tsetmc.setTextSize(17);
+        tsetmc.setAllCaps(false);
+        page.addView(tsetmc);
 
         Button back = new Button(this);
         back.setText("⬅ بازگشت");
         back.setAllCaps(false);
         page.addView(back);
 
+        tsetmc.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    Intent intent = new Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://www.tsetmc.com/")
+                    );
+                    startActivity(intent);
+                } catch (Exception e) {
+                    info.setText(
+                            "❌ باز کردن سایت انجام نشد.\n\n" +
+                            "لطفاً مرورگر گوشی را بررسی کنید."
+                    );
+                }
+            }
+        });
+
         back.setOnClickListener(v -> showMainPage());
 
         setContentView(page);
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-
-                boolean connected = false;
-
-                try {
-                    URL url = new URL("https://www.google.com");
-                    HttpURLConnection connection =
-                            (HttpURLConnection) url.openConnection();
-
-                    connection.setConnectTimeout(5000);
-                    connection.setReadTimeout(5000);
-                    connection.setRequestMethod("GET");
-
-                    int code = connection.getResponseCode();
-
-                    if (code >= 200 && code < 400) {
-                        connected = true;
-                    }
-
-                    connection.disconnect();
-
-                } catch (Exception e) {
-                    connected = false;
-                }
-
-                final boolean result = connected;
-
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (result) {
-                            status.setText(
-                                    "✅ اتصال اینترنت برقرار است.\n\n" +
-                                    "مرحله بعد: دریافت اطلاعات واقعی بورس ایران"
-                            );
-                        } else {
-                            status.setText(
-                                    "❌ اتصال اینترنت از داخل برنامه برقرار نشد."
-                            );
-                        }
-                    }
-                });
-            }
-        }).start();
     }
 
     private void showPage(String pageTitle, String text) {
