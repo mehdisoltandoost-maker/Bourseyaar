@@ -11,6 +11,14 @@ import android.widget.TextView;
 import android.content.Intent;
 import android.net.Uri;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
 public class MainActivity extends Activity {
 
     private LinearLayout layout;
@@ -118,48 +126,168 @@ public class MainActivity extends Activity {
         header.setBackgroundColor(Color.rgb(30, 100, 180));
         page.addView(header);
 
-        TextView info = new TextView(this);
-        info.setText(
-                "اتصال اینترنت برقرار است.\n\n" +
-                "برای آزمایش دسترسی به اطلاعات بورس، " +
-                "دکمه زیر را بزنید:"
-        );
-        info.setTextSize(18);
-        info.setPadding(15, 30, 15, 30);
-        page.addView(info);
+        TextView status = new TextView(this);
+        status.setText("⏳ در حال دریافت شاخص‌های بورس...");
+        status.setTextSize(18);
+        status.setPadding(15, 30, 15, 30);
+        page.addView(status);
 
-        Button tsetmc = new Button(this);
-        tsetmc.setText("🌐 باز کردن TSETMC");
-        tsetmc.setTextSize(17);
-        tsetmc.setAllCaps(false);
-        page.addView(tsetmc);
+        Button refresh = new Button(this);
+        refresh.setText("🔄 دریافت اطلاعات");
+        refresh.setAllCaps(false);
+        page.addView(refresh);
 
         Button back = new Button(this);
         back.setText("⬅ بازگشت");
         back.setAllCaps(false);
         page.addView(back);
 
-        tsetmc.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                try {
-                    Intent intent = new Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse("https://www.tsetmc.com/")
-                    );
-                    startActivity(intent);
-                } catch (Exception e) {
-                    info.setText(
-                            "❌ باز کردن سایت انجام نشد.\n\n" +
-                            "لطفاً مرورگر گوشی را بررسی کنید."
-                    );
-                }
-            }
-        });
+        refresh.setOnClickListener(v -> loadMarketData(status));
 
         back.setOnClickListener(v -> showMainPage());
 
         setContentView(page);
+
+        loadMarketData(status);
+    }
+
+    private void loadMarketData(TextView status) {
+
+        status.setText("⏳ در حال دریافت شاخص‌های بورس...");
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+
+                String result;
+
+                try {
+
+                    URL url = new URL(
+                            "https://cdn.tsetmc.com/api/Index/GetIndexB1LastAll/SelectedIndexes/1"
+                    );
+
+                    HttpURLConnection connection =
+                            (HttpURLConnection) url.openConnection();
+
+                    connection.setRequestMethod("GET");
+                    connection.setConnectTimeout(10000);
+                    connection.setReadTimeout(10000);
+                    connection.setRequestProperty(
+                            "User-Agent",
+                            "Mozilla/5.0"
+                    );
+
+                    int responseCode = connection.getResponseCode();
+
+                    if (responseCode < 200 || responseCode >= 300) {
+                        throw new Exception(
+                                "HTTP " + responseCode
+                        );
+                    }
+
+                    BufferedReader reader =
+                            new BufferedReader(
+                                    new InputStreamReader(
+                                            connection.getInputStream()
+                                    )
+                            );
+
+                    StringBuilder builder = new StringBuilder();
+                    String line;
+
+                    while ((line = reader.readLine()) != null) {
+                        builder.append(line);
+                    }
+
+                    reader.close();
+                    connection.disconnect();
+
+                    JSONObject root =
+                            new JSONObject(builder.toString());
+
+                    JSONArray indexes =
+                            root.optJSONArray("indexB1");
+
+                    if (indexes == null || indexes.length() == 0) {
+                        throw new Exception("داده‌ای دریافت نشد");
+                    }
+
+                    StringBuilder text =
+                            new StringBuilder();
+
+                    text.append("📊 اطلاعات بازار\n\n");
+
+                    for (int i = 0; i < indexes.length(); i++) {
+
+                        JSONObject item =
+                                indexes.getJSONObject(i);
+
+                        String name =
+                                item.optString(
+                                        "lVal30",
+                                        "شاخص"
+                                );
+
+                        String value =
+                                item.optString(
+                                        "xVal",
+                                        ""
+                                );
+
+                        String change =
+                                item.optString(
+                                        "xVarIdx",
+                                        ""
+                                );
+
+                        if (name.contains("کل") ||
+                                name.contains("هم وزن")) {
+
+                            text.append("📈 ")
+                                    .append(name)
+                                    .append("\n");
+
+                            text.append("مقدار: ")
+                                    .append(value)
+                                    .append("\n");
+
+                            text.append("تغییر: ")
+                                    .append(change)
+                                    .append("\n\n");
+                        }
+                    }
+
+                    if (text.toString().equals(
+                            "📊 اطلاعات بازار\n\n")) {
+
+                        text.append(
+                                "داده دریافت شد، " +
+                                "اما نام شاخص‌ها قابل شناسایی نبود."
+                        );
+                    }
+
+                    result = text.toString();
+
+                } catch (Exception e) {
+
+                    result =
+                            "❌ دریافت اطلاعات بورس انجام نشد.\n\n" +
+                            "ممکن است سرویس TSETMC از این اتصال " +
+                            "قابل دسترسی نباشد.\n\n" +
+                            "خطا: " + e.getMessage();
+                }
+
+                final String finalResult = result;
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        status.setText(finalResult);
+                    }
+                });
+            }
+        }).start();
     }
 
     private void showPage(String pageTitle, String text) {
