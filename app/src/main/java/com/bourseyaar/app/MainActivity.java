@@ -8,6 +8,9 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.os.Handler;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 public class MainActivity extends Activity {
 
@@ -34,8 +37,6 @@ public class MainActivity extends Activity {
         b.setText(text);
         b.setTextSize(17);
         b.setAllCaps(false);
-        b.setClickable(true);
-        b.setFocusable(true);
 
         LinearLayout.LayoutParams p =
                 new LinearLayout.LayoutParams(
@@ -77,60 +78,108 @@ public class MainActivity extends Activity {
         market.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                showPage("اطلاعات کلی بورس ایران",
-                        "شاخص کل\n\nشاخص هم‌وزن\n\nارزش معاملات\n\nحجم معاملات");
+                showMarketPage();
             }
         });
 
-        fundamental.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
+        fundamental.setOnClickListener(v ->
                 showPage("بهترین نمادها از نظر بنیادی",
-                        "بررسی نمادها بر اساس اطلاعات بنیادی.");
-            }
-        });
+                        "این بخش در مرحله بعد به اطلاعات بنیادی متصل می‌شود."));
 
-        technical.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
+        technical.setOnClickListener(v ->
                 showPage("تحلیل تکنیکال",
-                        "RSI\n\nMACD\n\nمیانگین متحرک\n\nحمایت و مقاومت");
-            }
-        });
+                        "RSI\n\nMACD\n\nمیانگین متحرک\n\nحمایت و مقاومت"));
 
-        smartMoney.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
+        smartMoney.setOnClickListener(v ->
                 showPage("پول هوشمند",
-                        "بررسی ورود پول هوشمند به نمادها.");
-            }
-        });
+                        "این بخش در مرحله بعد به داده‌های بازار متصل می‌شود."));
 
-        flow.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
+        flow.setOnClickListener(v ->
                 showPage("ورود و خروج پول",
-                        "بررسی ورود و خروج پول حقیقی.");
-            }
-        });
+                        "این بخش در مرحله بعد به داده‌های بازار متصل می‌شود."));
 
-        valuable.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
+        valuable.setOnClickListener(v ->
                 showPage("سهم‌های ارزنده",
-                        "ترکیب تحلیل بنیادی و تکنیکال برای شناسایی نمادهای ارزنده.");
-            }
-        });
+                        "ترکیب تحلیل بنیادی و تکنیکال در مرحله بعد اضافه می‌شود."));
 
-        portfolio.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
+        portfolio.setOnClickListener(v ->
                 showPage("سهام‌های من",
-                        "در این بخش می‌توان سهام‌های موجود در سبد شما را بررسی کرد.");
-            }
-        });
+                        "بررسی سبد سهام در مرحله بعد اضافه می‌شود."));
 
         setContentView(layout);
+    }
+
+    private void showMarketPage() {
+
+        LinearLayout page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setPadding(20, 20, 20, 20);
+
+        TextView header = title("اطلاعات کلی بورس ایران");
+        header.setBackgroundColor(Color.rgb(30, 100, 180));
+        page.addView(header);
+
+        TextView status = new TextView(this);
+        status.setText("در حال بررسی اتصال اینترنت...");
+        status.setTextSize(18);
+        status.setPadding(15, 30, 15, 30);
+        page.addView(status);
+
+        Button back = new Button(this);
+        back.setText("⬅ بازگشت");
+        back.setAllCaps(false);
+        page.addView(back);
+
+        back.setOnClickListener(v -> showMainPage());
+
+        setContentView(page);
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+
+                boolean connected = false;
+
+                try {
+                    URL url = new URL("https://www.google.com");
+                    HttpURLConnection connection =
+                            (HttpURLConnection) url.openConnection();
+
+                    connection.setConnectTimeout(5000);
+                    connection.setReadTimeout(5000);
+                    connection.setRequestMethod("GET");
+
+                    int code = connection.getResponseCode();
+
+                    if (code >= 200 && code < 400) {
+                        connected = true;
+                    }
+
+                    connection.disconnect();
+
+                } catch (Exception e) {
+                    connected = false;
+                }
+
+                final boolean result = connected;
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (result) {
+                            status.setText(
+                                    "✅ اتصال اینترنت برقرار است.\n\n" +
+                                    "مرحله بعد: دریافت اطلاعات واقعی بورس ایران"
+                            );
+                        } else {
+                            status.setText(
+                                    "❌ اتصال اینترنت از داخل برنامه برقرار نشد."
+                            );
+                        }
+                    }
+                });
+            }
+        }).start();
     }
 
     private void showPage(String pageTitle, String text) {
@@ -146,23 +195,15 @@ public class MainActivity extends Activity {
         TextView content = new TextView(this);
         content.setText(text);
         content.setTextSize(18);
-        content.setTextColor(Color.BLACK);
         content.setPadding(15, 35, 15, 35);
         page.addView(content);
 
         Button back = new Button(this);
         back.setText("⬅ بازگشت");
-        back.setTextSize(17);
         back.setAllCaps(false);
-
         page.addView(back);
 
-        back.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showMainPage();
-            }
-        });
+        back.setOnClickListener(v -> showMainPage());
 
         setContentView(page);
     }
