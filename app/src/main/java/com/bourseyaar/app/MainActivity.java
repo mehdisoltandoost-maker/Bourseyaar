@@ -8,16 +8,21 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.content.Intent;
-import android.net.Uri;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
 import java.net.URL;
+
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import javax.net.ssl.SSLSocketFactory;
+
+import java.security.cert.X509Certificate;
 
 public class MainActivity extends Activity {
 
@@ -82,12 +87,7 @@ public class MainActivity extends Activity {
         layout.addView(valuable);
         layout.addView(portfolio);
 
-        market.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showMarketPage();
-            }
-        });
+        market.setOnClickListener(v -> showMarketPage());
 
         fundamental.setOnClickListener(v ->
                 showPage("بهترین نمادها از نظر بنیادی",
@@ -143,7 +143,6 @@ public class MainActivity extends Activity {
         page.addView(back);
 
         refresh.setOnClickListener(v -> loadMarketData(status));
-
         back.setOnClickListener(v -> showMainPage());
 
         setContentView(page);
@@ -151,167 +150,231 @@ public class MainActivity extends Activity {
         loadMarketData(status);
     }
 
+    private SSLSocketFactory createTrustAllSocketFactory()
+            throws Exception {
+
+        TrustManager[] trustAllCerts =
+                new TrustManager[]{
+                        new X509TrustManager() {
+
+                            @Override
+                            public X509Certificate[] getAcceptedIssuers() {
+                                return new X509Certificate[0];
+                            }
+
+                            @Override
+                            public void checkClientTrusted(
+                                    X509Certificate[] chain,
+                                    String authType) {
+                            }
+
+                            @Override
+                            public void checkServerTrusted(
+                                    X509Certificate[] chain,
+                                    String authType) {
+                            }
+                        }
+                };
+
+        SSLContext sslContext =
+                SSLContext.getInstance("TLS");
+
+        sslContext.init(
+                null,
+                trustAllCerts,
+                new java.security.SecureRandom());
+
+        return sslContext.getSocketFactory();
+    }
+
     private void loadMarketData(TextView status) {
 
         status.setText("⏳ در حال دریافت شاخص‌های بورس...");
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
+        new Thread(() -> {
 
-                String result;
+            String result;
 
-                try {
+            try {
 
-                    URL url = new URL(
-                            "https://cdn.tsetmc.com/api/Index/GetIndexB1LastAll/SelectedIndexes/1"
-                    );
+                URL url = new URL(
+                        "https://cdn.tsetmc.com/api/Index/GetIndexB1LastAll/SelectedIndexes/1"
+                );
 
-                    HttpURLConnection connection =
-                            (HttpURLConnection) url.openConnection();
+                HttpsURLConnection connection =
+                        (HttpsURLConnection) url.openConnection();
 
-                    connection.setRequestMethod("GET");
-                    connection.setConnectTimeout(10000);
-                    connection.setReadTimeout(10000);
-                    connection.setRequestProperty(
-                            "User-Agent",
-                            "Mozilla/5.0"
-                    );
+                connection.setSSLSocketFactory(
+                        createTrustAllSocketFactory());
 
-                    int responseCode = connection.getResponseCode();
+                connection.setHostnameVerifier(
+                        (hostname, session) -> true);
 
-                    if (responseCode < 200 || responseCode >= 300) {
-                        throw new Exception(
-                                "HTTP " + responseCode
-                        );
-                    }
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(15000);
+                connection.setReadTimeout(15000);
 
-                    BufferedReader reader =
-                            new BufferedReader(
-                                    new InputStreamReader(
-                                            connection.getInputStream()
-                                    )
-                            );
+                connection.setRequestProperty(
+                        "User-Agent",
+                        "Mozilla/5.0");
 
-                    StringBuilder builder = new StringBuilder();
-                    String line;
+                connection.setRequestProperty(
+                        "Accept",
+                        "application/json");
 
-                    while ((line = reader.readLine()) != null) {
-                        builder.append(line);
-                    }
+                int responseCode =
+                        connection.getResponseCode();
 
-                    reader.close();
-                    connection.disconnect();
+                if (responseCode < 200 ||
+                        responseCode >= 300) {
 
-                    JSONObject root =
-                            new JSONObject(builder.toString());
-
-                    JSONArray indexes =
-                            root.optJSONArray("indexB1");
-
-                    if (indexes == null || indexes.length() == 0) {
-                        throw new Exception("داده‌ای دریافت نشد");
-                    }
-
-                    StringBuilder text =
-                            new StringBuilder();
-
-                    text.append("📊 اطلاعات بازار\n\n");
-
-                    for (int i = 0; i < indexes.length(); i++) {
-
-                        JSONObject item =
-                                indexes.getJSONObject(i);
-
-                        String name =
-                                item.optString(
-                                        "lVal30",
-                                        "شاخص"
-                                );
-
-                        String value =
-                                item.optString(
-                                        "xVal",
-                                        ""
-                                );
-
-                        String change =
-                                item.optString(
-                                        "xVarIdx",
-                                        ""
-                                );
-
-                        if (name.contains("کل") ||
-                                name.contains("هم وزن")) {
-
-                            text.append("📈 ")
-                                    .append(name)
-                                    .append("\n");
-
-                            text.append("مقدار: ")
-                                    .append(value)
-                                    .append("\n");
-
-                            text.append("تغییر: ")
-                                    .append(change)
-                                    .append("\n\n");
-                        }
-                    }
-
-                    if (text.toString().equals(
-                            "📊 اطلاعات بازار\n\n")) {
-
-                        text.append(
-                                "داده دریافت شد، " +
-                                "اما نام شاخص‌ها قابل شناسایی نبود."
-                        );
-                    }
-
-                    result = text.toString();
-
-                } catch (Exception e) {
-
-                    result =
-                            "❌ دریافت اطلاعات بورس انجام نشد.\n\n" +
-                            "ممکن است سرویس TSETMC از این اتصال " +
-                            "قابل دسترسی نباشد.\n\n" +
-                            "خطا: " + e.getMessage();
+                    throw new Exception(
+                            "HTTP " + responseCode);
                 }
 
-                final String finalResult = result;
+                BufferedReader reader =
+                        new BufferedReader(
+                                new InputStreamReader(
+                                        connection.getInputStream()));
 
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        status.setText(finalResult);
+                StringBuilder builder =
+                        new StringBuilder();
+
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+                    builder.append(line);
+                }
+
+                reader.close();
+                connection.disconnect();
+
+                JSONObject root =
+                        new JSONObject(builder.toString());
+
+                JSONArray indexes =
+                        root.optJSONArray("indexB1");
+
+                if (indexes == null ||
+                        indexes.length() == 0) {
+
+                    throw new Exception(
+                            "داده‌ای دریافت نشد");
+                }
+
+                StringBuilder text =
+                        new StringBuilder();
+
+                text.append("📊 اطلاعات بازار\n\n");
+
+                for (int i = 0;
+                        i < indexes.length();
+                        i++) {
+
+                    JSONObject item =
+                            indexes.getJSONObject(i);
+
+                    String name =
+                            item.optString(
+                                    "lVal30",
+                                    "شاخص");
+
+                    String value =
+                            item.optString(
+                                    "xVal",
+                                    "");
+
+                    String change =
+                            item.optString(
+                                    "xVarIdx",
+                                    "");
+
+                    if (name.contains("کل") ||
+                            name.contains("هم وزن")) {
+
+                        text.append("📈 ")
+                                .append(name)
+                                .append("\n");
+
+                        text.append("مقدار: ")
+                                .append(value)
+                                .append("\n");
+
+                        text.append("تغییر: ")
+                                .append(change)
+                                .append("\n\n");
                     }
-                });
+                }
+
+                if (text.toString().equals(
+                        "📊 اطلاعات بازار\n\n")) {
+
+                    text.append(
+                            "داده دریافت شد، اما " +
+                            "نام شاخص‌ها قابل شناسایی نبود.");
+                }
+
+                result = text.toString();
+
+            } catch (Exception e) {
+
+                result =
+                        "❌ دریافت اطلاعات بورس انجام نشد.\n\n" +
+                        "خطا: " +
+                        e.getClass().getSimpleName() +
+                        "\n" +
+                        e.getMessage();
             }
+
+            final String finalResult = result;
+
+            runOnUiThread(() ->
+                    status.setText(finalResult));
+
         }).start();
     }
 
-    private void showPage(String pageTitle, String text) {
+    private void showPage(
+            String pageTitle,
+            String text) {
 
-        LinearLayout page = new LinearLayout(this);
-        page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(20, 20, 20, 20);
+        LinearLayout page =
+                new LinearLayout(this);
 
-        TextView header = title(pageTitle);
-        header.setBackgroundColor(Color.rgb(30, 100, 180));
+        page.setOrientation(
+                LinearLayout.VERTICAL);
+
+        page.setPadding(
+                20, 20, 20, 20);
+
+        TextView header =
+                title(pageTitle);
+
+        header.setBackgroundColor(
+                Color.rgb(30, 100, 180));
+
         page.addView(header);
 
-        TextView content = new TextView(this);
+        TextView content =
+                new TextView(this);
+
         content.setText(text);
         content.setTextSize(18);
-        content.setPadding(15, 35, 15, 35);
+        content.setPadding(
+                15, 35, 15, 35);
+
         page.addView(content);
 
-        Button back = new Button(this);
+        Button back =
+                new Button(this);
+
         back.setText("⬅ بازگشت");
         back.setAllCaps(false);
+
         page.addView(back);
 
-        back.setOnClickListener(v -> showMainPage());
+        back.setOnClickListener(
+                v -> showMainPage());
 
         setContentView(page);
     }
