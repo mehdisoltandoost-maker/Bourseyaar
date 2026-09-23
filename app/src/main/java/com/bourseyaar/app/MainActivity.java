@@ -413,7 +413,7 @@ public class MainActivity extends Activity {
         return format.format(value);
     }
 
-    private String money(double value) {
+    private String rial(double value) {
 
         double abs = Math.abs(value);
 
@@ -437,6 +437,143 @@ public class MainActivity extends Activity {
 
         return formatNumber(value)
                 + " ریال";
+    }
+
+    private String toman(double value) {
+
+        return rial(value / 10.0)
+                .replace("ریال", "تومان");
+    }
+
+    /*
+     * نام نماد را فقط از فیلدهای متنی معتبر پیدا می‌کند.
+     * اگر چیزی پیدا نشود، هرگز insCode را به‌عنوان نام نماد برنمی‌گرداند.
+     */
+    private String getSymbolName(JSONObject object) {
+
+        String[] keys = {
+                "lVal18AFC",
+                "lVal18",
+                "lVal30",
+                "symbol",
+                "symbolName",
+                "name"
+        };
+
+        for (String key : keys) {
+
+            String value =
+                    object.optString(key, "").trim();
+
+            if (!value.isEmpty() &&
+                    !value.equals("null") &&
+                    !value.matches("\\d+")) {
+
+                return value;
+            }
+        }
+
+        return "";
+    }
+
+    /*
+     * در صورت تغییر نام آرایه در پاسخ TSETMC،
+     * آرایه‌های داخل JSON را هم بررسی می‌کند.
+     */
+    private void collectObjects(
+            Object object,
+            String insCode,
+            ArrayList<JSONObject> result) {
+
+        try {
+
+            if (object instanceof JSONObject) {
+
+                JSONObject json =
+                        (JSONObject) object;
+
+                String code =
+                        json.optString(
+                                "insCode",
+                                "");
+
+                if (!insCode.isEmpty() &&
+                        insCode.equals(code)) {
+
+                    String symbol =
+                            getSymbolName(json);
+
+                    if (!symbol.isEmpty()) {
+                        result.add(json);
+                    }
+                }
+
+                JSONArray names =
+                        json.names();
+
+                if (names != null) {
+
+                    for (int i = 0;
+                            i < names.length();
+                            i++) {
+
+                        String name =
+                                names.optString(i);
+
+                        Object child =
+                                json.opt(name);
+
+                        collectObjects(
+                                child,
+                                insCode,
+                                result);
+                    }
+                }
+
+            } else if (object instanceof JSONArray) {
+
+                JSONArray array =
+                        (JSONArray) object;
+
+                for (int i = 0;
+                        i < array.length();
+                        i++) {
+
+                    collectObjects(
+                            array.opt(i),
+                            insCode,
+                            result);
+                }
+            }
+
+        } catch (Exception ignored) {
+        }
+    }
+
+    private String findSymbol(
+            JSONObject root,
+            String insCode) {
+
+        ArrayList<JSONObject> found =
+                new ArrayList<>();
+
+        collectObjects(
+                root,
+                insCode,
+                found);
+
+        if (!found.isEmpty()) {
+
+            String symbol =
+                    getSymbolName(
+                            found.get(0));
+
+            if (!symbol.isEmpty()) {
+                return symbol;
+            }
+        }
+
+        return "";
     }
 
     private void loadMarketData(
@@ -604,10 +741,6 @@ public class MainActivity extends Activity {
                         clientRoot.optJSONArray(
                                 "clientTypeAllDto");
 
-                JSONArray market =
-                        marketRoot.optJSONArray(
-                                "marketwatch");
-
                 if (clients == null ||
                         clients.length() == 0) {
 
@@ -618,6 +751,10 @@ public class MainActivity extends Activity {
                 Map<String, JSONObject>
                         marketMap =
                         new HashMap<>();
+
+                JSONArray market =
+                        marketRoot.optJSONArray(
+                                "marketwatch");
 
                 if (market != null) {
 
@@ -683,15 +820,15 @@ public class MainActivity extends Activity {
                     JSONObject marketItem =
                             marketMap.get(code);
 
-                    String symbol = code;
+                    String symbol = "";
+
                     double price = 0;
 
                     if (marketItem != null) {
 
                         symbol =
-                                marketItem.optString(
-                                        "lVal18AFC",
-                                        code);
+                                getSymbolName(
+                                        marketItem);
 
                         price =
                                 getDouble(
@@ -711,6 +848,25 @@ public class MainActivity extends Activity {
                                             marketItem,
                                             "pl");
                         }
+                    }
+
+                    /*
+                     * اگر در marketwatch نام پیدا نشد،
+                     * کل پاسخ را برای همان insCode جستجو می‌کنیم.
+                     */
+                    if (symbol.isEmpty()) {
+
+                        symbol =
+                                findSymbol(
+                                        marketRoot,
+                                        code);
+                    }
+
+                    /*
+                     * عدد insCode هرگز به‌عنوان نماد استفاده نمی‌شود.
+                     */
+                    if (symbol.isEmpty()) {
+                        continue;
                     }
 
                     FlowItem item =
@@ -734,14 +890,17 @@ public class MainActivity extends Activity {
                         list,
                         (a, b) ->
                                 Double.compare(
-                                        b.netValue,
-                                        a.netValue));
+                                        Math.abs(b.netValue),
+                                        Math.abs(a.netValue)));
 
                 StringBuilder text =
                         new StringBuilder();
 
                 text.append(
-                        "🟢 بیشترین ورود پول حقیقی\n\n");
+                        "🔄 ورود و خروج پول حقیقی\n\n");
+
+                text.append(
+                        "🟢 ورود پول\n\n");
 
                 int count = 0;
 
@@ -756,35 +915,42 @@ public class MainActivity extends Activity {
 
                     text.append("🟢 ")
                             .append(item.symbol)
-                            .append("\n");
+                            .append("\n\n");
 
                     text.append(
                             "خرید حقیقی: ")
                             .append(
                                     formatNumber(
                                             item.buyI))
-                            .append("\n");
+                            .append(" سهم\n");
 
                     text.append(
                             "فروش حقیقی: ")
                             .append(
                                     formatNumber(
                                             item.sellI))
-                            .append("\n");
+                            .append(" سهم\n");
 
                     text.append(
-                            "خالص حجم پول: ")
+                            "خالص ورود: ")
                             .append(
                                     formatNumber(
                                             item.netVolume))
-                            .append("\n");
+                            .append(" سهم\n");
 
                     if (item.price > 0) {
 
                         text.append(
-                                "ارزش خالص تقریبی: ")
+                                "ارزش خالص: ")
                                 .append(
-                                        money(
+                                        rial(
+                                                item.netValue))
+                                .append("\n");
+
+                        text.append(
+                                "معادل: ")
+                                .append(
+                                        toman(
                                                 item.netValue))
                                 .append("\n");
                     }
@@ -797,7 +963,7 @@ public class MainActivity extends Activity {
                 }
 
                 text.append(
-                        "\n🔴 بیشترین خروج پول حقیقی\n\n");
+                        "\n🔴 خروج پول\n\n");
 
                 count = 0;
 
@@ -812,36 +978,46 @@ public class MainActivity extends Activity {
 
                     text.append("🔴 ")
                             .append(item.symbol)
-                            .append("\n");
+                            .append("\n\n");
 
                     text.append(
                             "خرید حقیقی: ")
                             .append(
                                     formatNumber(
                                             item.buyI))
-                            .append("\n");
+                            .append(" سهم\n");
 
                     text.append(
                             "فروش حقیقی: ")
                             .append(
                                     formatNumber(
                                             item.sellI))
-                            .append("\n");
+                            .append(" سهم\n");
 
                     text.append(
-                            "خالص حجم پول: ")
+                            "خالص خروج: ")
                             .append(
                                     formatNumber(
-                                            item.netVolume))
-                            .append("\n");
+                                            Math.abs(
+                                                    item.netVolume)))
+                            .append(" سهم\n");
 
                     if (item.price > 0) {
 
                         text.append(
-                                "ارزش خالص تقریبی: ")
+                                "ارزش خالص: ")
                                 .append(
-                                        money(
-                                                item.netValue))
+                                        rial(
+                                                Math.abs(
+                                                        item.netValue)))
+                                .append("\n");
+
+                        text.append(
+                                "معادل: ")
+                                .append(
+                                        toman(
+                                                Math.abs(
+                                                        item.netValue)))
                                 .append("\n");
                     }
 
@@ -851,6 +1027,12 @@ public class MainActivity extends Activity {
                         break;
                     }
                 }
+
+                text.append(
+                        "\n━━━━━━━━━━━━━━━━━━\n");
+
+                text.append(
+                        "✅ اطلاعات پول حقیقی از TSETMC دریافت شد.");
 
                 result =
                         text.toString();
@@ -923,10 +1105,6 @@ public class MainActivity extends Activity {
                         clientRoot.optJSONArray(
                                 "clientTypeAllDto");
 
-                JSONArray market =
-                        marketRoot.optJSONArray(
-                                "marketwatch");
-
                 if (clients == null ||
                         clients.length() == 0) {
 
@@ -937,6 +1115,10 @@ public class MainActivity extends Activity {
                 Map<String, JSONObject>
                         marketMap =
                         new HashMap<>();
+
+                JSONArray market =
+                        marketRoot.optJSONArray(
+                                "marketwatch");
 
                 if (market != null) {
 
@@ -1034,15 +1216,14 @@ public class MainActivity extends Activity {
                     JSONObject m =
                             marketMap.get(code);
 
-                    String symbol = code;
+                    String symbol = "";
+
                     double price = 0;
 
                     if (m != null) {
 
                         symbol =
-                                m.optString(
-                                        "lVal18AFC",
-                                        code);
+                                getSymbolName(m);
 
                         price =
                                 getDouble(
@@ -1062,6 +1243,22 @@ public class MainActivity extends Activity {
                                             m,
                                             "pl");
                         }
+                    }
+
+                    if (symbol.isEmpty()) {
+
+                        symbol =
+                                findSymbol(
+                                        marketRoot,
+                                        code);
+                    }
+
+                    /*
+                     * اگر نام واقعی پیدا نشد،
+                     * عدد insCode نمایش داده نمی‌شود.
+                     */
+                    if (symbol.isEmpty()) {
+                        continue;
                     }
 
                     double netValue =
@@ -1118,7 +1315,7 @@ public class MainActivity extends Activity {
                         new StringBuilder();
 
                 text.append(
-                        "💵 نمادهای دارای نشانه جریان پول\n\n");
+                        "💵 پول هوشمند\n\n");
 
                 text.append(
                         "این فهرست یک فیلتر تحلیلی است و به‌تنهایی سیگنال خرید یا فروش نیست.\n\n");
@@ -1132,30 +1329,29 @@ public class MainActivity extends Activity {
                             "━━━━━━━━━━━━━━━━━━\n");
 
                     text.append("🧠 ")
-                            .append(
-                                    item.symbol)
-                            .append("\n");
+                            .append(item.symbol)
+                            .append("\n\n");
 
                     text.append(
                             "خرید حقیقی: ")
                             .append(
                                     formatNumber(
                                             item.buyI))
-                            .append("\n");
+                            .append(" سهم\n");
 
                     text.append(
                             "فروش حقیقی: ")
                             .append(
                                     formatNumber(
                                             item.sellI))
-                            .append("\n");
+                            .append(" سهم\n");
 
                     text.append(
                             "خالص ورود پول: ")
                             .append(
                                     formatNumber(
                                             item.netVolume))
-                            .append("\n");
+                            .append(" سهم\n");
 
                     text.append(
                             "قدرت خرید: ")
@@ -1167,9 +1363,16 @@ public class MainActivity extends Activity {
                     if (item.netValue > 0) {
 
                         text.append(
-                                "ارزش تقریبی ورود: ")
+                                "ارزش ورود: ")
                                 .append(
-                                        money(
+                                        rial(
+                                                item.netValue))
+                                .append("\n");
+
+                        text.append(
+                                "معادل: ")
+                                .append(
+                                        toman(
                                                 item.netValue))
                                 .append("\n");
                     }
