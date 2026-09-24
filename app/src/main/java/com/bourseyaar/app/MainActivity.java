@@ -21,12 +21,9 @@ import java.net.URL;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.TimeZone;
 
 import javax.net.ssl.HostnameVerifier;
@@ -145,33 +142,64 @@ public class MainActivity extends Activity {
         setContentView(layout);
     }
 
+    /*
+     * ============================================================
+     * اطلاعات کلی بورس
+     * ============================================================
+     */
+
     private void showMarketPage() {
 
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(20, 20, 20, 20);
+        page.setPadding(15, 15, 15, 15);
+        page.setBackgroundColor(Color.WHITE);
 
         TextView header = title("اطلاعات کلی بورس ایران");
         header.setBackgroundColor(Color.rgb(30, 100, 180));
         page.addView(header);
 
         TextView status = new TextView(this);
-        status.setText("⏳ در حال دریافت شاخص‌های بورس...");
+
+        status.setText(
+                "⏳ در حال دریافت اطلاعات بازار...\n\n" +
+                "لطفاً چند ثانیه صبر کنید."
+        );
+
         status.setTextSize(18);
-        status.setPadding(15, 30, 15, 30);
-        page.addView(status);
+        status.setTextColor(Color.DKGRAY);
+        status.setGravity(Gravity.RIGHT);
+        status.setPadding(15, 25, 15, 25);
+
+        ScrollView scroll = new ScrollView(this);
+
+        scroll.setBackgroundColor(Color.WHITE);
+        scroll.addView(status);
+
+        LinearLayout.LayoutParams scrollParams =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        0,
+                        1);
+
+        page.addView(scroll, scrollParams);
 
         Button refresh = new Button(this);
         refresh.setText("🔄 دریافت اطلاعات");
+        refresh.setTextSize(16);
         refresh.setAllCaps(false);
+
         page.addView(refresh);
 
         Button back = new Button(this);
         back.setText("⬅ بازگشت");
+        back.setTextSize(16);
         back.setAllCaps(false);
+
         page.addView(back);
 
         refresh.setOnClickListener(v -> loadMarketData(status));
+
         back.setOnClickListener(v -> showMainPage());
 
         setContentView(page);
@@ -181,7 +209,10 @@ public class MainActivity extends Activity {
 
     private void loadMarketData(TextView status) {
 
-        status.setText("⏳ در حال دریافت شاخص‌های بورس...");
+        status.setText(
+                "⏳ در حال اتصال به TSETMC...\n\n" +
+                "دریافت شاخص‌های بازار..."
+        );
 
         new Thread(() -> {
 
@@ -193,75 +224,315 @@ public class MainActivity extends Activity {
                         API + "Index/GetIndexB1LastAll/SelectedIndexes/1"
                 );
 
-                JSONObject root = new JSONObject(json);
+                if (json == null || json.trim().equals("")) {
+                    throw new Exception("پاسخ TSETMC خالی است");
+                }
 
-                JSONArray indexes = root.optJSONArray("indexB1");
+                JSONObject root =
+                        new JSONObject(json);
+
+                JSONArray indexes =
+                        findIndexArray(root);
 
                 if (indexes == null || indexes.length() == 0) {
-                    throw new Exception("داده‌ای دریافت نشد");
-                }
 
-                StringBuilder text = new StringBuilder();
+                    result =
+                            "⚠ اطلاعات شاخص دریافت شد، " +
+                            "اما ساختار پاسخ قابل شناسایی نبود.\n\n" +
+                            "پاسخ سرور خالی نیست.\n\n" +
+                            "لطفاً دکمه «دریافت اطلاعات» را دوباره بزنید.";
+                } else {
 
-                text.append("📊 اطلاعات بازار\n\n");
+                    StringBuilder text =
+                            new StringBuilder();
 
-                for (int i = 0; i < indexes.length(); i++) {
+                    text.append("📊 اطلاعات کلی بازار\n\n");
 
-                    JSONObject item = indexes.getJSONObject(i);
+                    int shown = 0;
 
-                    String name = item.optString(
-                            "lVal30",
-                            "شاخص"
-                    );
+                    for (int i = 0;
+                         i < indexes.length();
+                         i++) {
 
-                    String value = item.optString(
-                            "xVal",
-                            ""
-                    );
+                        try {
 
-                    String change = item.optString(
-                            "xVarIdx",
-                            ""
-                    );
+                            JSONObject item =
+                                    indexes.getJSONObject(i);
 
-                    if (name.contains("کل") ||
-                            name.contains("هم وزن")) {
+                            String name =
+                                    firstValue(
+                                            item,
+                                            "lVal30",
+                                            "lVal18",
+                                            "indexName",
+                                            "name",
+                                            "indexNameEn"
+                                    );
 
-                        text.append("📈 ")
-                                .append(name)
-                                .append("\n");
+                            String value =
+                                    firstValue(
+                                            item,
+                                            "xVal",
+                                            "xVal1",
+                                            "indexValue",
+                                            "value"
+                                    );
 
-                        text.append("مقدار: ")
-                                .append(value)
-                                .append("\n");
+                            String change =
+                                    firstValue(
+                                            item,
+                                            "xVarIdx",
+                                            "xVar",
+                                            "change",
+                                            "changeValue"
+                                    );
 
-                        text.append("تغییر: ")
-                                .append(change)
-                                .append("\n\n");
+                            String percent =
+                                    firstValue(
+                                            item,
+                                            "xVarPrc",
+                                            "xVarPrcIdx",
+                                            "changePercent",
+                                            "percent"
+                                    );
+
+                            if (name.equals("")) {
+                                name = "شاخص";
+                            }
+
+                            if (value.equals("")) {
+                                value = "-";
+                            }
+
+                            if (change.equals("")) {
+                                change = "-";
+                            }
+
+                            if (percent.equals("")) {
+                                percent = "-";
+                            }
+
+                            boolean important =
+                                    name.contains("کل") ||
+                                    name.contains("هم وزن") ||
+                                    name.contains("هم‌وزن") ||
+                                    name.contains("قیمت") ||
+                                    name.contains("فرابورس") ||
+                                    name.contains("صنعت");
+
+                            if (important || shown < 10) {
+
+                                text.append("📈 ")
+                                        .append(name)
+                                        .append("\n");
+
+                                text.append("مقدار شاخص: ")
+                                        .append(value)
+                                        .append("\n");
+
+                                text.append("تغییر: ")
+                                        .append(change)
+                                        .append("\n");
+
+                                text.append("درصد تغییر: ")
+                                        .append(percent)
+                                        .append("\n\n");
+
+                                shown++;
+                            }
+
+                        } catch (Exception ignored) {
+                        }
                     }
-                }
 
-                if (text.toString().equals("📊 اطلاعات بازار\n\n")) {
-                    text.append(
-                            "داده دریافت شد، اما نام شاخص‌ها قابل شناسایی نبود."
-                    );
-                }
+                    if (shown == 0) {
 
-                result = text.toString();
+                        text.append(
+                                "داده دریافت شد، " +
+                                "اما شاخص قابل نمایش پیدا نشد.\n\n"
+                        );
+
+                    } else {
+
+                        text.append(
+                                "────────────────\n\n"
+                        );
+
+                        text.append(
+                                "⏱ آخرین بروزرسانی: "
+                        );
+
+                        text.append(currentTime());
+                    }
+
+                    result = text.toString();
+                }
 
             } catch (Exception e) {
 
+                String error =
+                        e.getMessage();
+
+                if (error == null ||
+                        error.trim().equals("")) {
+                    error = "خطای نامشخص";
+                }
+
                 result =
                         "❌ دریافت اطلاعات بورس انجام نشد.\n\n" +
-                        "خطا: " + e.getMessage();
+                        "خطا:\n" +
+                        error +
+                        "\n\n" +
+                        "اگر اینترنت وصل است، " +
+                        "دکمه «دریافت اطلاعات» را دوباره بزنید.";
             }
 
-            final String finalResult = result;
+            final String finalResult =
+                    result;
 
-            runOnUiThread(() -> status.setText(finalResult));
+            runOnUiThread(() -> {
+
+                status.setText(finalResult);
+                status.setTextColor(Color.DKGRAY);
+
+            });
 
         }).start();
     }
+
+    /*
+     * پیدا کردن آرایه شاخص‌ها در پاسخ‌های مختلف TSETMC
+     */
+
+    private JSONArray findIndexArray(JSONObject root) {
+
+        String[] keys = {
+                "indexB1",
+                "indexB1LastAll",
+                "indexB1LastAllDto",
+                "indexes",
+                "index",
+                "data"
+        };
+
+        for (String key : keys) {
+
+            JSONArray arr =
+                    root.optJSONArray(key);
+
+            if (arr != null &&
+                    arr.length() > 0) {
+
+                return arr;
+            }
+        }
+
+        return findArrayRecursively(root, 0);
+    }
+
+    private JSONArray findArrayRecursively(
+            JSONObject object,
+            int depth
+    ) {
+
+        if (depth > 3) {
+            return null;
+        }
+
+        JSONArray possible =
+                object.optJSONArray("indexB1");
+
+        if (possible != null &&
+                possible.length() > 0) {
+
+            return possible;
+        }
+
+        java.util.Iterator<String> keys =
+                object.keys();
+
+        while (keys.hasNext()) {
+
+            String key =
+                    keys.next();
+
+            try {
+
+                Object value =
+                        object.get(key);
+
+                if (value instanceof JSONArray) {
+
+                    JSONArray arr =
+                            (JSONArray) value;
+
+                    if (arr.length() > 0 &&
+                            arr.get(0) instanceof JSONObject) {
+
+                        JSONObject first =
+                                arr.getJSONObject(0);
+
+                        if (looksLikeIndex(first)) {
+                            return arr;
+                        }
+                    }
+                }
+
+                if (value instanceof JSONObject) {
+
+                    JSONArray found =
+                            findArrayRecursively(
+                                    (JSONObject) value,
+                                    depth + 1
+                            );
+
+                    if (found != null) {
+                        return found;
+                    }
+                }
+
+            } catch (Exception ignored) {
+            }
+        }
+
+        return null;
+    }
+
+    private boolean looksLikeIndex(JSONObject o) {
+
+        return o.has("lVal30") ||
+                o.has("xVal") ||
+                o.has("xVarIdx") ||
+                o.has("indexValue") ||
+                o.has("indexName");
+    }
+
+    private String firstValue(
+            JSONObject object,
+            String... keys
+    ) {
+
+        for (String key : keys) {
+
+            String value =
+                    object.optString(
+                            key,
+                            ""
+                    ).trim();
+
+            if (!value.equals("")) {
+                return value;
+            }
+        }
+
+        return "";
+    }
+
+    /*
+     * ============================================================
+     * پول هوشمند
+     * ============================================================
+     */
 
     private void showSmartMoneyPage() {
 
@@ -270,17 +541,21 @@ public class MainActivity extends Activity {
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         page.setPadding(15, 15, 15, 15);
+        page.setBackgroundColor(Color.WHITE);
 
         TextView header = title("💵 پول هوشمند");
         header.setBackgroundColor(Color.rgb(30, 100, 180));
         page.addView(header);
 
         TextView status = new TextView(this);
+
         status.setText(
                 "⏳ در حال دریافت اطلاعات حقیقی و حقوقی...\n\n" +
                 "ممکن است چند ثانیه زمان ببرد."
         );
+
         status.setTextSize(17);
+        status.setTextColor(Color.DKGRAY);
         status.setPadding(10, 20, 10, 20);
 
         ScrollView scroll = new ScrollView(this);
@@ -324,6 +599,7 @@ public class MainActivity extends Activity {
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         page.setPadding(15, 15, 15, 15);
+        page.setBackgroundColor(Color.WHITE);
 
         TextView header = title("🔄 ورود و خروج پول");
         header.setBackgroundColor(Color.rgb(30, 100, 180));
@@ -332,6 +608,7 @@ public class MainActivity extends Activity {
         TextView status = new TextView(this);
         status.setText("⏳ در حال دریافت جریان پول...");
         status.setTextSize(17);
+        status.setTextColor(Color.DKGRAY);
         status.setPadding(10, 20, 10, 20);
 
         ScrollView scroll = new ScrollView(this);
@@ -407,7 +684,8 @@ public class MainActivity extends Activity {
                         marketRoot.optJSONArray("marketwatch");
 
                 if (market == null) {
-                    market = marketRoot.optJSONArray("marketWatch");
+                    market =
+                            marketRoot.optJSONArray("marketWatch");
                 }
 
                 if (market == null) {
@@ -417,23 +695,32 @@ public class MainActivity extends Activity {
                 Map<String, JSONObject> marketMap =
                         new HashMap<>();
 
-                for (int i = 0; i < market.length(); i++) {
+                for (int i = 0;
+                     i < market.length();
+                     i++) {
 
-                    JSONObject item = market.getJSONObject(i);
+                    JSONObject item =
+                            market.getJSONObject(i);
 
-                    String code = item.optString(
-                            "insCode",
-                            item.optString("ins_code", "")
-                    );
+                    String code =
+                            item.optString(
+                                    "insCode",
+                                    item.optString(
+                                            "ins_code",
+                                            ""
+                                    )
+                            );
 
                     if (!code.equals("")) {
                         marketMap.put(code, item);
                     }
                 }
 
-                String clientJson = httpGet(
-                        API + "ClientType/GetClientTypeAll"
-                );
+                String clientJson =
+                        httpGet(
+                                API +
+                                        "ClientType/GetClientTypeAll"
+                        );
 
                 JSONObject clientRoot =
                         new JSONObject(clientJson);
@@ -458,15 +745,18 @@ public class MainActivity extends Activity {
                 int realInCount = 0;
                 int realOutCount = 0;
 
-                for (int i = 0; i < clients.length(); i++) {
+                for (int i = 0;
+                     i < clients.length();
+                     i++) {
 
                     JSONObject c =
                             clients.getJSONObject(i);
 
-                    String code = c.optString(
-                            "insCode",
-                            ""
-                    );
+                    String code =
+                            c.optString(
+                                    "insCode",
+                                    ""
+                            );
 
                     if (code.equals("")) {
                         continue;
@@ -514,7 +804,8 @@ public class MainActivity extends Activity {
                             num(m, "pl");
 
                     if (price <= 0) {
-                        price = num(m, "pDrCotVal");
+                        price =
+                                num(m, "pDrCotVal");
                     }
 
                     double avgBuyI =
@@ -543,7 +834,8 @@ public class MainActivity extends Activity {
                                     : 0;
 
                     double powerN =
-                            avgBuyN > 0 && avgSellN > 0
+                            avgBuyN > 0 &&
+                            avgSellN > 0
                                     ? avgBuyN / avgSellN
                                     : 0;
 
@@ -559,8 +851,11 @@ public class MainActivity extends Activity {
                     double netNValue =
                             netN * price;
 
-                    totalRealNet += netIValue;
-                    totalLegalNet += netNValue;
+                    totalRealNet +=
+                            netIValue;
+
+                    totalLegalNet +=
+                            netNValue;
 
                     if (netIValue > 0) {
                         realInCount++;
@@ -568,37 +863,62 @@ public class MainActivity extends Activity {
                         realOutCount++;
                     }
 
-                    StockData s = new StockData();
+                    StockData s =
+                            new StockData();
 
                     s.code = code;
                     s.symbol = symbol;
+
                     s.buyI = buyI;
                     s.sellI = sellI;
+
                     s.buyN = buyN;
                     s.sellN = sellN;
 
-                    s.countBuyI = countBuyI;
-                    s.countSellI = countSellI;
+                    s.countBuyI =
+                            countBuyI;
 
-                    s.countBuyN = countBuyN;
-                    s.countSellN = countSellN;
+                    s.countSellI =
+                            countSellI;
 
-                    s.avgBuyI = avgBuyI;
-                    s.avgSellI = avgSellI;
+                    s.countBuyN =
+                            countBuyN;
 
-                    s.avgBuyN = avgBuyN;
-                    s.avgSellN = avgSellN;
+                    s.countSellN =
+                            countSellN;
 
-                    s.powerI = powerI;
-                    s.powerN = powerN;
+                    s.avgBuyI =
+                            avgBuyI;
 
-                    s.netI = netI;
-                    s.netN = netN;
+                    s.avgSellI =
+                            avgSellI;
 
-                    s.netIValue = netIValue;
-                    s.netNValue = netNValue;
+                    s.avgBuyN =
+                            avgBuyN;
 
-                    s.price = price;
+                    s.avgSellN =
+                            avgSellN;
+
+                    s.powerI =
+                            powerI;
+
+                    s.powerN =
+                            powerN;
+
+                    s.netI =
+                            netI;
+
+                    s.netN =
+                            netN;
+
+                    s.netIValue =
+                            netIValue;
+
+                    s.netNValue =
+                            netNValue;
+
+                    s.price =
+                            price;
 
                     s.score =
                             calculateScore(s);
@@ -616,13 +936,17 @@ public class MainActivity extends Activity {
                 );
 
                 int historyCount =
-                        Math.min(12, stocks.size());
+                        Math.min(
+                                12,
+                                stocks.size()
+                        );
 
                 for (int i = 0;
                      i < historyCount;
                      i++) {
 
-                    StockData s = stocks.get(i);
+                    StockData s =
+                            stocks.get(i);
 
                     try {
 
@@ -646,13 +970,17 @@ public class MainActivity extends Activity {
                 StringBuilder out =
                         new StringBuilder();
 
-                out.append("🧠 پول هوشمند\n\n");
+                out.append(
+                        "🧠 پول هوشمند\n\n"
+                );
 
                 out.append(
                         "📅 مقایسه امروز با ۵ روز معاملاتی گذشته\n\n"
                 );
 
-                out.append("📊 وضعیت کل بازار\n");
+                out.append(
+                        "📊 وضعیت کل بازار\n"
+                );
 
                 out.append(
                         "خالص خرید حقیقی: "
@@ -668,11 +996,15 @@ public class MainActivity extends Activity {
 
                 out.append(
                         "تعداد نماد با ورود پول حقیقی: "
-                ).append(realInCount).append("\n");
+                ).append(
+                        realInCount
+                ).append("\n");
 
                 out.append(
                         "تعداد نماد با خروج پول حقیقی: "
-                ).append(realOutCount).append("\n\n");
+                ).append(
+                        realOutCount
+                ).append("\n\n");
 
                 out.append(
                         "⚠ این ارقام «خالص خرید حقیقی/حقوقی» هستند؛ " +
@@ -740,6 +1072,7 @@ public class MainActivity extends Activity {
                 }
 
                 if (shown == 0) {
+
                     out.append(
                             "مورد قابل توجهی برای خروج پول حقیقی پیدا نشد.\n"
                     );
@@ -751,7 +1084,8 @@ public class MainActivity extends Activity {
                         currentTime()
                 );
 
-                result = out.toString();
+                result =
+                        out.toString();
 
             } catch (Exception e) {
 
@@ -760,15 +1094,19 @@ public class MainActivity extends Activity {
                         e.getMessage();
             }
 
-            final String finalResult = result;
+            final String finalResult =
+                    result;
 
             runOnUiThread(() -> {
 
                 loadingSmart = false;
 
                 if (smartPageOpen) {
-                    status.setText(finalResult);
+                    status.setText(
+                            finalResult
+                    );
                 }
+
             });
 
         }).start();
@@ -786,29 +1124,34 @@ public class MainActivity extends Activity {
 
             try {
 
-                String marketJson = httpGet(
-                        API +
-                                "ClosingPrice/GetMarketWatch" +
-                                "?market=0" +
-                                "&paperTypes[0]=1" +
-                                "&paperTypes[1]=2" +
-                                "&paperTypes[2]=3" +
-                                "&paperTypes[3]=4" +
-                                "&paperTypes[4]=5" +
-                                "&paperTypes[5]=6" +
-                                "&paperTypes[6]=7" +
-                                "&paperTypes[7]=8" +
-                                "&paperTypes[8]=9" +
-                                "&withBestLimits=false" +
-                                "&hEven=0" +
-                                "&RefID=0"
-                );
+                String marketJson =
+                        httpGet(
+                                API +
+                                        "ClosingPrice/GetMarketWatch" +
+                                        "?market=0" +
+                                        "&paperTypes[0]=1" +
+                                        "&paperTypes[1]=2" +
+                                        "&paperTypes[2]=3" +
+                                        "&paperTypes[3]=4" +
+                                        "&paperTypes[4]=5" +
+                                        "&paperTypes[5]=6" +
+                                        "&paperTypes[6]=7" +
+                                        "&paperTypes[7]=8" +
+                                        "&paperTypes[8]=9" +
+                                        "&withBestLimits=false" +
+                                        "&hEven=0" +
+                                        "&RefID=0"
+                        );
 
                 JSONObject marketRoot =
-                        new JSONObject(marketJson);
+                        new JSONObject(
+                                marketJson
+                        );
 
                 JSONArray market =
-                        marketRoot.optJSONArray("marketwatch");
+                        marketRoot.optJSONArray(
+                                "marketwatch"
+                        );
 
                 if (market == null) {
                     market =
@@ -848,7 +1191,9 @@ public class MainActivity extends Activity {
                         );
 
                 JSONObject clientRoot =
-                        new JSONObject(clientJson);
+                        new JSONObject(
+                                clientJson
+                        );
 
                 JSONArray clients =
                         clientRoot.optJSONArray(
@@ -856,6 +1201,7 @@ public class MainActivity extends Activity {
                         );
 
                 if (clients == null) {
+
                     throw new Exception(
                             "داده حقیقی/حقوقی دریافت نشد"
                     );
@@ -892,23 +1238,37 @@ public class MainActivity extends Activity {
                     }
 
                     double buyI =
-                            num(c, "buy_I_Volume");
+                            num(
+                                    c,
+                                    "buy_I_Volume"
+                            );
 
                     double sellI =
-                            num(c, "sell_I_Volume");
+                            num(
+                                    c,
+                                    "sell_I_Volume"
+                            );
 
                     double price =
-                            num(m, "pl");
+                            num(
+                                    m,
+                                    "pl"
+                            );
 
                     if (price <= 0) {
                         price =
-                                num(m, "pDrCotVal");
+                                num(
+                                        m,
+                                        "pDrCotVal"
+                                );
                     }
 
                     FlowData f =
                             new FlowData();
 
-                    f.symbol = symbol;
+                    f.symbol =
+                            symbol;
+
                     f.net =
                             (buyI - sellI) *
                                     price;
@@ -952,9 +1312,11 @@ public class MainActivity extends Activity {
                             .append(f.symbol)
                             .append("\n");
 
-                    out.append("ورود خالص: ")
-                            .append(money(f.net))
-                            .append("\n\n");
+                    out.append(
+                            "ورود خالص: "
+                    ).append(
+                            money(f.net)
+                    ).append("\n\n");
 
                     count++;
                 }
@@ -988,18 +1350,24 @@ public class MainActivity extends Activity {
                             .append(f.symbol)
                             .append("\n");
 
-                    out.append("خروج خالص: ")
-                            .append(money(
-                                    Math.abs(f.net)
-                            ))
-                            .append("\n\n");
+                    out.append(
+                            "خروج خالص: "
+                    ).append(
+                            money(
+                                    Math.abs(
+                                            f.net
+                                    )
+                            )
+                    ).append("\n\n");
 
                     count++;
                 }
 
                 out.append(
                         "⏱ بروزرسانی: "
-                ).append(currentTime());
+                ).append(
+                        currentTime()
+                );
 
                 result =
                         out.toString();
@@ -1024,6 +1392,12 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    /*
+     * ============================================================
+     * تاریخچه ۵ روزه
+     * ============================================================
+     */
+
     private void loadFiveDayHistory(
             StockData s
     ) throws Exception {
@@ -1039,7 +1413,9 @@ public class MainActivity extends Activity {
                 new JSONObject(json);
 
         JSONArray arr =
-                root.optJSONArray("clientType");
+                root.optJSONArray(
+                        "clientType"
+                );
 
         if (arr == null) {
             return;
@@ -1084,7 +1460,10 @@ public class MainActivity extends Activity {
         );
 
         int n =
-                Math.min(5, days.size());
+                Math.min(
+                        5,
+                        days.size()
+                );
 
         if (n == 0) {
             return;
@@ -1093,31 +1472,53 @@ public class MainActivity extends Activity {
         double powerSum = 0;
         double netValueSum = 0;
 
-        for (int i = 0; i < n; i++) {
+        for (int i = 0;
+             i < n;
+             i++) {
 
             JSONObject d =
                     days.get(i);
 
             double buyI =
-                    num(d, "buy_I_Volume");
+                    num(
+                            d,
+                            "buy_I_Volume"
+                    );
 
             double sellI =
-                    num(d, "sell_I_Volume");
+                    num(
+                            d,
+                            "sell_I_Volume"
+                    );
 
             double buyCount =
-                    num(d, "buy_I_Count");
+                    num(
+                            d,
+                            "buy_I_Count"
+                    );
 
             if (buyCount <= 0) {
+
                 buyCount =
-                        num(d, "buy_CountI");
+                        num(
+                                d,
+                                "buy_CountI"
+                        );
             }
 
             double sellCount =
-                    num(d, "sell_I_Count");
+                    num(
+                            d,
+                            "sell_I_Count"
+                    );
 
             if (sellCount <= 0) {
+
                 sellCount =
-                        num(d, "sell_CountI");
+                        num(
+                                d,
+                                "sell_CountI"
+                        );
             }
 
             double avgBuy =
@@ -1136,10 +1537,16 @@ public class MainActivity extends Activity {
                             : 0;
 
             double buyValue =
-                    num(d, "buy_I_Value");
+                    num(
+                            d,
+                            "buy_I_Value"
+                    );
 
             double sellValue =
-                    num(d, "sell_I_Value");
+                    num(
+                            d,
+                            "sell_I_Value"
+                    );
 
             double netValue =
                     buyValue - sellValue;
@@ -1154,8 +1561,15 @@ public class MainActivity extends Activity {
         s.avgFiveNet =
                 netValueSum / n;
 
-        s.historyDays = n;
+        s.historyDays =
+                n;
     }
+
+    /*
+     * ============================================================
+     * امتیاز پول هوشمند
+     * ============================================================
+     */
 
     private double calculateScore(
             StockData s
@@ -1164,12 +1578,19 @@ public class MainActivity extends Activity {
         double score = 0;
 
         if (s.powerI >= 3) {
+
             score += 40;
+
         } else if (s.powerI >= 2) {
+
             score += 32;
+
         } else if (s.powerI >= 1.5) {
+
             score += 24;
+
         } else if (s.powerI >= 1.2) {
+
             score += 15;
         }
 
@@ -1179,8 +1600,9 @@ public class MainActivity extends Activity {
         if (total > 0) {
 
             double ratio =
-                    Math.abs(s.netI) /
-                            total;
+                    Math.abs(
+                            s.netI
+                    ) / total;
 
             score +=
                     Math.min(
@@ -1191,16 +1613,19 @@ public class MainActivity extends Activity {
 
         if (s.netI > 0 &&
                 s.netN < 0) {
+
             score += 20;
         }
 
         if (s.powerN > 0 &&
                 s.powerN < 1) {
+
             score += 10;
         }
 
         if (s.avgFivePower > 0 &&
-                s.powerI > s.avgFivePower) {
+                s.powerI >
+                        s.avgFivePower) {
 
             score += 15;
         }
@@ -1216,8 +1641,11 @@ public class MainActivity extends Activity {
 
         if (s.powerI > 0 &&
                 s.powerI < 0.7) {
+
             score += 40;
+
         } else if (s.powerI < 0.85) {
+
             score += 30;
         }
 
@@ -1227,16 +1655,25 @@ public class MainActivity extends Activity {
 
         if (s.netI < 0 &&
                 s.netN > 0) {
+
             score += 20;
         }
 
         if (s.avgFivePower > 0 &&
-                s.powerI < s.avgFivePower) {
+                s.powerI <
+                        s.avgFivePower) {
+
             score += 10;
         }
 
         return score;
     }
+
+    /*
+     * ============================================================
+     * نمایش نمادهای پول هوشمند
+     * ============================================================
+     */
 
     private String formatStock(
             StockData s
@@ -1252,55 +1689,73 @@ public class MainActivity extends Activity {
         x.append(
                 "خریداران حقیقی: "
         ).append(
-                integer(s.countBuyI)
+                integer(
+                        s.countBuyI
+                )
         ).append(" نفر\n");
 
         x.append(
                 "حجم خرید حقیقی: "
         ).append(
-                integer(s.buyI)
+                integer(
+                        s.buyI
+                )
         ).append(" سهم\n");
 
         x.append(
                 "میانگین خرید هر نفر: "
         ).append(
-                integer(s.avgBuyI)
+                integer(
+                        s.avgBuyI
+                )
         ).append(" سهم\n\n");
 
         x.append(
                 "فروشندگان حقیقی: "
         ).append(
-                integer(s.countSellI)
+                integer(
+                        s.countSellI
+                )
         ).append(" نفر\n");
 
         x.append(
                 "حجم فروش حقیقی: "
         ).append(
-                integer(s.sellI)
+                integer(
+                        s.sellI
+                )
         ).append(" سهم\n");
 
         x.append(
                 "میانگین فروش هر نفر: "
         ).append(
-                integer(s.avgSellI)
+                integer(
+                        s.avgSellI
+                )
         ).append(" سهم\n\n");
 
         x.append(
                 "⚡ قدرت خریدار: "
         ).append(
-                decimal(s.powerI)
+                decimal(
+                        s.powerI
+                )
         ).append(" برابر\n");
 
         x.append(
                 "📥 ورود پول حقیقی: "
         ).append(
-                money(s.netIValue)
+                money(
+                        s.netIValue
+                )
         ).append("\n");
 
         x.append(
                 "🏢 خالص حقوقی: "
         ).append(
-                money(s.netNValue)
+                money(
+                        s.netNValue
+                )
         ).append("\n");
 
         if (s.netI > 0 &&
@@ -1310,7 +1765,8 @@ public class MainActivity extends Activity {
                     "🟢 حقیقی در حال خرید / حقوقی در حال فروش\n"
             );
 
-        } else if (s.netI < 0 &&
+        } else if (
+                s.netI < 0 &&
                 s.netN > 0) {
 
             x.append(
@@ -1327,13 +1783,17 @@ public class MainActivity extends Activity {
             x.append(
                     "قدرت امروز: "
             ).append(
-                    decimal(s.powerI)
+                    decimal(
+                            s.powerI
+                    )
             ).append("\n");
 
             x.append(
                     "میانگین قدرت ۵ روز: "
             ).append(
-                    decimal(s.avgFivePower)
+                    decimal(
+                            s.avgFivePower
+                    )
             ).append("\n");
 
             if (s.powerI >
@@ -1354,7 +1814,9 @@ public class MainActivity extends Activity {
         x.append(
                 "امتیاز پول هوشمند: "
         ).append(
-                decimal(s.score)
+                decimal(
+                        s.score
+                )
         ).append("\n\n");
 
         return x.toString();
@@ -1374,41 +1836,61 @@ public class MainActivity extends Activity {
         x.append(
                 "خریدار حقیقی: "
         ).append(
-                integer(s.countBuyI)
+                integer(
+                        s.countBuyI
+                )
         ).append(" نفر\n");
 
         x.append(
                 "فروشنده حقیقی: "
         ).append(
-                integer(s.countSellI)
+                integer(
+                        s.countSellI
+                )
         ).append(" نفر\n");
 
         x.append(
                 "میانگین خرید: "
         ).append(
-                integer(s.avgBuyI)
+                integer(
+                        s.avgBuyI
+                )
         ).append(" سهم\n");
 
         x.append(
                 "میانگین فروش: "
         ).append(
-                integer(s.avgSellI)
+                integer(
+                        s.avgSellI
+                )
         ).append(" سهم\n");
 
         x.append(
                 "⚡ قدرت خریدار: "
         ).append(
-                decimal(s.powerI)
+                decimal(
+                        s.powerI
+                )
         ).append(" برابر\n");
 
         x.append(
                 "📤 خروج پول حقیقی: "
         ).append(
-                money(Math.abs(s.netIValue))
+                money(
+                        Math.abs(
+                                s.netIValue
+                        )
+                )
         ).append("\n\n");
 
         return x.toString();
     }
+
+    /*
+     * ============================================================
+     * ابزارها
+     * ============================================================
+     */
 
     private String getSymbolName(
             JSONObject o
@@ -1445,10 +1927,13 @@ public class MainActivity extends Activity {
 
         if (s == null ||
                 s.trim().equals("")) {
+
             return true;
         }
 
-        return s.matches("\\d+");
+        return s.matches(
+                "\\d+"
+        );
     }
 
     private double num(
@@ -1463,10 +1948,12 @@ public class MainActivity extends Activity {
 
             if (value == null ||
                     value == JSONObject.NULL) {
+
                 return 0;
             }
 
             if (value instanceof Number) {
+
                 return ((Number) value)
                         .doubleValue();
             }
@@ -1520,25 +2007,29 @@ public class MainActivity extends Activity {
         boolean negative =
                 value < 0;
 
-        value = Math.abs(value);
+        value =
+                Math.abs(value);
 
         String unit;
 
-        if (value >= 1_000_000_000_000.0) {
+        if (value >=
+                1_000_000_000_000.0) {
 
             unit = "همت";
 
             value /=
                     1_000_000_000_000.0;
 
-        } else if (value >= 1_000_000_000.0) {
+        } else if (value >=
+                1_000_000_000.0) {
 
             unit = "میلیارد ریال";
 
             value /=
                     1_000_000_000.0;
 
-        } else if (value >= 1_000_000.0) {
+        } else if (value >=
+                1_000_000.0) {
 
             unit = "میلیون ریال";
 
@@ -1571,7 +2062,8 @@ public class MainActivity extends Activity {
         }
 
         if (negative) {
-            result = "-" + result;
+            result =
+                    "-" + result;
         }
 
         return result;
@@ -1660,27 +2152,29 @@ public class MainActivity extends Activity {
 
         stopSmartRefresh();
 
-        refreshRunnable = new Runnable() {
+        refreshRunnable =
+                new Runnable() {
 
-            @Override
-            public void run() {
+                    @Override
+                    public void run() {
 
-                if (!smartPageOpen) {
-                    return;
-                }
+                        if (!smartPageOpen) {
+                            return;
+                        }
 
-                if (isMarketOpen()) {
+                        if (isMarketOpen()) {
 
-                    loadSmartMoney(status);
+                            loadSmartMoney(
+                                    status
+                            );
+                        }
 
-                }
-
-                handler.postDelayed(
-                        this,
-                        30000
-                );
-            }
-        };
+                        handler.postDelayed(
+                                this,
+                                30000
+                        );
+                    }
+                };
 
         handler.postDelayed(
                 refreshRunnable,
@@ -1700,18 +2194,28 @@ public class MainActivity extends Activity {
         }
     }
 
+    /*
+     * ============================================================
+     * اتصال اینترنتی
+     * ============================================================
+     */
+
     private String httpGet(
             String urlString
     ) throws Exception {
 
         URL url =
-                new URL(urlString);
+                new URL(
+                        urlString
+                );
 
         HttpURLConnection connection =
                 (HttpURLConnection)
                         url.openConnection();
 
-        connection.setRequestMethod("GET");
+        connection.setRequestMethod(
+                "GET"
+        );
 
         connection.setConnectTimeout(
                 15000
@@ -1756,11 +2260,14 @@ public class MainActivity extends Activity {
         String line;
 
         while (
-                (line = reader.readLine())
+                (line =
+                        reader.readLine())
                         != null
         ) {
 
-            builder.append(line);
+            builder.append(
+                    line
+            );
         }
 
         reader.close();
@@ -1769,6 +2276,12 @@ public class MainActivity extends Activity {
 
         return builder.toString();
     }
+
+    /*
+     * ============================================================
+     * رفع مشکل SSL برای TSETMC
+     * ============================================================
+     */
 
     private void installTrustAllForTsetmc() {
 
@@ -1779,7 +2292,9 @@ public class MainActivity extends Activity {
 
                             new X509TrustManager() {
 
-                                public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                                public java.security.cert.X509Certificate[]
+                                getAcceptedIssuers() {
+
                                     return new java.security.cert.X509Certificate[0];
                                 }
 
@@ -1814,7 +2329,8 @@ public class MainActivity extends Activity {
             );
 
             HostnameVerifier verifier =
-                    (hostname, session) -> true;
+                    (hostname, session) ->
+                            true;
 
             HttpsURLConnection.setDefaultHostnameVerifier(
                     verifier
@@ -1823,6 +2339,12 @@ public class MainActivity extends Activity {
         } catch (Exception ignored) {
         }
     }
+
+    /*
+     * ============================================================
+     * صفحات ساده
+     * ============================================================
+     */
 
     private void showPage(
             String pageTitle,
@@ -1843,11 +2365,19 @@ public class MainActivity extends Activity {
                 20
         );
 
+        page.setBackgroundColor(
+                Color.WHITE
+        );
+
         TextView header =
                 title(pageTitle);
 
         header.setBackgroundColor(
-                Color.rgb(30, 100, 180)
+                Color.rgb(
+                        30,
+                        100,
+                        180
+                )
         );
 
         page.addView(header);
@@ -1857,6 +2387,10 @@ public class MainActivity extends Activity {
 
         content.setText(text);
         content.setTextSize(18);
+        content.setTextColor(
+                Color.DKGRAY
+        );
+
         content.setPadding(
                 15,
                 35,
@@ -1869,7 +2403,10 @@ public class MainActivity extends Activity {
         Button back =
                 new Button(this);
 
-        back.setText("⬅ بازگشت");
+        back.setText(
+                "⬅ بازگشت"
+        );
+
         back.setAllCaps(false);
 
         page.addView(back);
@@ -1888,6 +2425,12 @@ public class MainActivity extends Activity {
 
         super.onDestroy();
     }
+
+    /*
+     * ============================================================
+     * کلاس اطلاعات سهم
+     * ============================================================
+     */
 
     private static class StockData {
 
@@ -1931,9 +2474,16 @@ public class MainActivity extends Activity {
         int historyDays;
     }
 
+    /*
+     * ============================================================
+     * کلاس ورود و خروج پول
+     * ============================================================
+     */
+
     private static class FlowData {
 
         String symbol = "";
+
         double net;
     }
 }
