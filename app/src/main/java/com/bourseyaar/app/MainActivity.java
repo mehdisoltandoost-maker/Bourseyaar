@@ -34,8 +34,6 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import javax.net.ssl.SSLHandshakeException;
-
 public class MainActivity extends Activity {
 
     private LinearLayout content;
@@ -50,9 +48,14 @@ public class MainActivity extends Activity {
     private final List<MarketItem> marketItems =
             new ArrayList<>();
 
-    // فقط آدرس رسمی API
     private static final String API_BASE =
             "https://cdn.tsetmc.com/api/";
+
+    private static final String USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 13) " +
+            "AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) " +
+            "Chrome/120.0 Mobile Safari/537.36";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,7 +63,6 @@ public class MainActivity extends Activity {
 
         buildMainPage();
 
-        // تست اتصال بعد از نمایش صفحه
         loadMarketData();
     }
 
@@ -68,11 +70,14 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
 
-        executor.shutdownNow();
+        try {
+            executor.shutdownNow();
+        } catch (Exception ignored) {
+        }
     }
 
     // =========================================================
-    // ساخت صفحه
+    // صفحه اصلی
     // =========================================================
 
     private void buildMainPage() {
@@ -280,7 +285,7 @@ public class MainActivity extends Activity {
                 text(
                         "\nبورس‌یار\n\n" +
                         "اتصال مستقیم به سرویس TSETMC\n" +
-                        "و دریافت اطلاعات واقعی بازار",
+                        "دریافت اطلاعات واقعی بازار",
                         16);
 
         info.setGravity(
@@ -290,7 +295,7 @@ public class MainActivity extends Activity {
     }
 
     // =========================================================
-    // دریافت بازار
+    // دریافت اطلاعات بازار
     // =========================================================
 
     private void loadMarketData() {
@@ -303,74 +308,98 @@ public class MainActivity extends Activity {
 
         executor.execute(() -> {
 
-            try {
+            Exception lastError = null;
 
-                String url =
-                        API_BASE +
-                        "ClosingPrice/GetMarketWatch" +
-                        "?market=0" +
-                        "&paperTypes%5B0%5D=1" +
-                        "&paperTypes%5B1%5D=2" +
-                        "&paperTypes%5B2%5D=3" +
-                        "&paperTypes%5B3%5D=4" +
-                        "&paperTypes%5B4%5D=5" +
-                        "&paperTypes%5B5%5D=6" +
-                        "&paperTypes%5B6%5D=7" +
-                        "&paperTypes%5B7%5D=8" +
-                        "&paperTypes%5B8%5D=9" +
-                        "&withBestLimits=false" +
-                        "&hEven=0" +
-                        "&RefID=0";
+            for (int attempt = 1;
+                 attempt <= 3;
+                 attempt++) {
 
-                String response =
-                        httpGet(url);
+                try {
 
-                if (response == null ||
-                        response.trim().isEmpty()) {
+                    String url =
+                            API_BASE +
+                            "ClosingPrice/GetMarketWatch" +
+                            "?market=0" +
+                            "&paperTypes%5B0%5D=1" +
+                            "&paperTypes%5B1%5D=2" +
+                            "&paperTypes%5B2%5D=3" +
+                            "&paperTypes%5B3%5D=4" +
+                            "&paperTypes%5B4%5D=5" +
+                            "&paperTypes%5B5%5D=6" +
+                            "&paperTypes%5B6%5D=7" +
+                            "&paperTypes%5B7%5D=8" +
+                            "&paperTypes%5B8%5D=9" +
+                            "&withBestLimits=false" +
+                            "&hEven=0" +
+                            "&RefID=0";
 
-                    throw new Exception(
-                            "پاسخ TSETMC خالی است.");
-                }
+                    String response =
+                            httpGet(url);
 
-                parseMarketWatch(response);
+                    if (response == null ||
+                            response.trim().isEmpty()) {
 
-                if (marketItems.isEmpty()) {
-
-                    throw new Exception(
-                            "پاسخ دریافت شد ولی آرایه marketwatch خالی است.");
-                }
-
-                handler.post(() -> {
-
-                    if (statusText != null) {
-
-                        statusText.setText(
-                                "🟢 اتصال برقرار شد\n" +
-                                marketItems.size() +
-                                " نماد از TSETMC دریافت شد.");
+                        throw new Exception(
+                                "پاسخ TSETMC خالی است.");
                     }
 
-                    Toast.makeText(
-                            MainActivity.this,
-                            "اطلاعات واقعی بازار دریافت شد",
-                            Toast.LENGTH_SHORT).show();
-                });
+                    parseMarketWatch(response);
 
-            } catch (Exception e) {
+                    if (marketItems.isEmpty()) {
 
-                final String error =
-                        getReadableError(e);
-
-                handler.post(() -> {
-
-                    if (statusText != null) {
-
-                        statusText.setText(
-                                "🔴 خطای اتصال TSETMC\n\n" +
-                                error);
+                        throw new Exception(
+                                "TSETMC پاسخ داد اما marketwatch خالی است.");
                     }
-                });
+
+                    final int count =
+                            marketItems.size();
+
+                    handler.post(() -> {
+
+                        if (statusText != null) {
+
+                            statusText.setText(
+                                    "🟢 اتصال برقرار شد\n" +
+                                    count +
+                                    " نماد از TSETMC دریافت شد.");
+                        }
+
+                        Toast.makeText(
+                                MainActivity.this,
+                                "اطلاعات واقعی بازار دریافت شد",
+                                Toast.LENGTH_SHORT).show();
+                    });
+
+                    return;
+
+                } catch (Exception e) {
+
+                    lastError = e;
+
+                    if (attempt < 3) {
+
+                        try {
+                            Thread.sleep(1500);
+                        } catch (InterruptedException ignored) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    }
+                }
             }
+
+            final String error =
+                    getReadableError(lastError);
+
+            handler.post(() -> {
+
+                if (statusText != null) {
+
+                    statusText.setText(
+                            "🔴 اتصال TSETMC برقرار نشد\n\n" +
+                            error);
+                }
+            });
         });
     }
 
@@ -392,27 +421,25 @@ public class MainActivity extends Activity {
                     (HttpURLConnection)
                             url.openConnection();
 
-            connection.setRequestMethod(
-                    "GET");
+            connection.setRequestMethod("GET");
 
-            connection.setConnectTimeout(
-                    20000);
+            connection.setConnectTimeout(20000);
 
-            connection.setReadTimeout(
-                    30000);
+            connection.setReadTimeout(30000);
 
             connection.setUseCaches(false);
 
-            connection.setInstanceFollowRedirects(
-                    true);
+            /*
+             * عمداً Redirect را خودمان کنترل می‌کنیم.
+             * چون اگر TSETMC کد 303/302 بدهد،
+             * دنبال کردن خودکار آن ممکن است
+             * علت اصلی مشکل را مخفی کند.
+             */
+            connection.setInstanceFollowRedirects(false);
 
-            // بسیار مهم برای TSETMC
             connection.setRequestProperty(
                     "User-Agent",
-                    "Mozilla/5.0 (Linux; Android 13) " +
-                    "AppleWebKit/537.36 " +
-                    "(KHTML, like Gecko) " +
-                    "Chrome/120.0 Mobile Safari/537.36");
+                    USER_AGENT);
 
             connection.setRequestProperty(
                     "Accept",
@@ -423,11 +450,42 @@ public class MainActivity extends Activity {
                     "fa-IR,fa;q=0.9,en-US;q=0.8,en;q=0.7");
 
             connection.setRequestProperty(
+                    "Cache-Control",
+                    "no-cache");
+
+            connection.setRequestProperty(
+                    "Pragma",
+                    "no-cache");
+
+            connection.setRequestProperty(
+                    "Referer",
+                    "https://tsetmc.com/");
+
+            connection.setRequestProperty(
                     "Connection",
                     "close");
 
             int code =
                     connection.getResponseCode();
+
+            if (code == 301 ||
+                    code == 302 ||
+                    code == 303 ||
+                    code == 307 ||
+                    code == 308) {
+
+                String location =
+                        connection.getHeaderField(
+                                "Location");
+
+                throw new IOException(
+                        "HTTP " +
+                        code +
+                        "\nRedirect:\n" +
+                        (location == null
+                                ? "نامشخص"
+                                : location));
+            }
 
             InputStream input;
 
@@ -446,11 +504,12 @@ public class MainActivity extends Activity {
                         readStream(input);
 
                 if (errorBody != null &&
-                        errorBody.length() > 300) {
+                        errorBody.length() > 500) {
 
                     errorBody =
                             errorBody.substring(
-                                    0, 300);
+                                    0,
+                                    500);
                 }
 
                 throw new IOException(
@@ -474,16 +533,9 @@ public class MainActivity extends Activity {
 
             return result;
 
-        } catch (SSLHandshakeException e) {
-
-            throw new IOException(
-                    "خطای SSL / گواهی امنیتی\n" +
-                    e.getMessage());
-
         } finally {
 
             if (connection != null) {
-
                 connection.disconnect();
             }
         }
@@ -520,29 +572,52 @@ public class MainActivity extends Activity {
     }
 
     // =========================================================
-    // تشخیص خطای واقعی
+    // تشخیص خطا
     // =========================================================
 
     private String getReadableError(
             Exception e) {
 
+        if (e == null) {
+
+            return "خطای نامشخص";
+        }
+
         String msg =
                 e.getMessage();
 
-        if (msg == null) {
+        if (msg == null ||
+                msg.trim().isEmpty()) {
+
             msg = e.toString();
         }
 
+        String lower =
+                msg.toLowerCase(Locale.US);
+
         if (msg.contains("HTTP 403")) {
 
-            return "HTTP 403\n\n" +
-                    "دسترسی این اتصال به TSETMC رد شده است.\n" +
-                    "احتمالاً IP یا شبکه مورد استفاده توسط TSETMC مسدود شده است.";
+            return
+                    "HTTP 403\n\n" +
+                    "سرور TSETMC دسترسی این اتصال را رد کرده است.\n\n" +
+                    "این حالت می‌تواند به IP، شبکه یا محدودیت دسترسی TSETMC مربوط باشد.\n\n" +
+                    "متن سرور:\n" +
+                    msg;
+        }
+
+        if (msg.contains("HTTP 303") ||
+                msg.contains("HTTP 302") ||
+                msg.contains("HTTP 301")) {
+
+            return
+                    "TSETMC اتصال را Redirect کرده است.\n\n" +
+                    msg;
         }
 
         if (msg.contains("HTTP 429")) {
 
-            return "HTTP 429\n\n" +
+            return
+                    "HTTP 429\n\n" +
                     "تعداد درخواست‌ها زیاد شده است.\n" +
                     "چند لحظه بعد دوباره امتحان کنید.";
         }
@@ -552,30 +627,44 @@ public class MainActivity extends Activity {
                 msg.contains("HTTP 503") ||
                 msg.contains("HTTP 504")) {
 
-            return msg +
-                    "\n\nسرویس TSETMC موقتاً پاسخ مناسب نداده است.";
+            return
+                    msg +
+                    "\n\n" +
+                    "سرویس TSETMC موقتاً پاسخ مناسب نداده است.";
         }
 
-        if (msg.toLowerCase(
-                Locale.US).contains("timeout")) {
+        if (lower.contains("timeout")) {
 
-            return "Timeout\n\n" +
-                    "پاسخ TSETMC در زمان تعیین‌شده دریافت نشد.";
+            return
+                    "Timeout\n\n" +
+                    "سرور TSETMC در زمان تعیین‌شده پاسخ نداد.";
         }
 
-        if (msg.toLowerCase(
-                Locale.US).contains("ssl")) {
+        if (lower.contains("ssl") ||
+                lower.contains("certificate") ||
+                lower.contains("trust anchor") ||
+                lower.contains("handshake")) {
 
-            return "SSL\n\n" +
-                    "اتصال امن به TSETMC با مشکل گواهی امنیتی مواجه شد.";
+            return
+                    "خطای SSL\n\n" +
+                    "اتصال امن Android به TSETMC مشکل گواهی امنیتی دارد.\n\n" +
+                    msg;
         }
 
-        if (msg.contains("Unable to resolve") ||
-                msg.contains("UnknownHost")) {
+        if (lower.contains("unable to resolve") ||
+                lower.contains("unknownhost") ||
+                lower.contains("no address associated")) {
 
-            return "DNS / اینترنت\n\n" +
-                    "دامنه cdn.tsetmc.com پیدا نشد.\n" +
-                    "اتصال اینترنت یا DNS را بررسی کنید.";
+            return
+                    "خطای DNS / اینترنت\n\n" +
+                    "دامنه cdn.tsetmc.com از داخل برنامه پیدا نشد.";
+        }
+
+        if (lower.contains("cleartext")) {
+
+            return
+                    "Cleartext HTTP مسدود است.\n\n" +
+                    "این برنامه برای TSETMC از HTTPS استفاده می‌کند.";
         }
 
         return msg;
@@ -591,8 +680,19 @@ public class MainActivity extends Activity {
 
         marketItems.clear();
 
+        String trimmed =
+                response.trim();
+
+        if (!trimmed.startsWith("{")) {
+
+            throw new Exception(
+                    "پاسخ TSETMC JSON نیست.\n\n" +
+                    "ابتدای پاسخ:\n" +
+                    safePreview(trimmed));
+        }
+
         JSONObject object =
-                new JSONObject(response);
+                new JSONObject(trimmed);
 
         JSONArray array = null;
 
@@ -615,7 +715,9 @@ public class MainActivity extends Activity {
         if (array == null) {
 
             throw new Exception(
-                    "کلید marketwatch در پاسخ TSETMC وجود ندارد.");
+                    "کلید marketwatch در پاسخ TSETMC وجود ندارد.\n\n" +
+                    "کلیدهای دریافت‌شده:\n" +
+                    object.names());
         }
 
         for (int i = 0;
@@ -691,12 +793,26 @@ public class MainActivity extends Activity {
             if (item.symbol == null ||
                     item.symbol.trim().isEmpty()) {
 
-                item.symbol =
-                        "نماد";
+                item.symbol = "نماد";
             }
 
             marketItems.add(item);
         }
+    }
+
+    private String safePreview(
+            String value) {
+
+        if (value == null) {
+            return "";
+        }
+
+        if (value.length() > 300) {
+
+            return value.substring(0, 300);
+        }
+
+        return value;
     }
 
     // =========================================================
@@ -710,18 +826,16 @@ public class MainActivity extends Activity {
 
             try {
 
-                String url =
-                        API_BASE +
-                        "ClientType/GetClientTypeAll";
-
                 String response =
-                        httpGet(url);
+                        httpGet(
+                                API_BASE +
+                                "ClientType/GetClientTypeAll");
 
                 if (response == null ||
                         response.trim().isEmpty()) {
 
                     throw new Exception(
-                            "پاسخ اطلاعات حقیقی/حقوقی خالی است.");
+                            "پاسخ حقیقی/حقوقی خالی است.");
                 }
 
                 JSONObject obj =
@@ -739,8 +853,7 @@ public class MainActivity extends Activity {
                                 "clientTypeAllDto");
 
                 handler.post(() ->
-                        callback.onSuccess(
-                                array));
+                        callback.onSuccess(array));
 
             } catch (Exception e) {
 
@@ -748,8 +861,7 @@ public class MainActivity extends Activity {
                         getReadableError(e);
 
                 handler.post(() ->
-                        callback.onError(
-                                error));
+                        callback.onError(error));
             }
         });
     }
@@ -786,6 +898,7 @@ public class MainActivity extends Activity {
 
         int positive = 0;
         int negative = 0;
+        int unchanged = 0;
 
         for (MarketItem item :
                 marketItems) {
@@ -798,13 +911,17 @@ public class MainActivity extends Activity {
                             item.yesterday) {
 
                 positive++;
-            }
 
-            if (item.yesterday > 0 &&
+            } else if (
+                    item.yesterday > 0 &&
                     item.close <
                             item.yesterday) {
 
                 negative++;
+
+            } else {
+
+                unchanged++;
             }
         }
 
@@ -821,14 +938,20 @@ public class MainActivity extends Activity {
 
         content.addView(
                 text(
-                        "نمادهای مثبت: " +
+                        "🟢 نمادهای مثبت: " +
                         positive,
                         19));
 
         content.addView(
                 text(
-                        "نمادهای منفی: " +
+                        "🔴 نمادهای منفی: " +
                         negative,
+                        19));
+
+        content.addView(
+                text(
+                        "⚪ بدون تغییر: " +
+                        unchanged,
                         19));
 
         content.addView(
@@ -864,7 +987,7 @@ public class MainActivity extends Activity {
 
         content.addView(
                 text(
-                        "در حال دریافت اطلاعات حقیقی و حقوقی از TSETMC...",
+                        "در حال دریافت اطلاعات حقیقی و حقوقی...",
                         18));
 
         loadClientType(
@@ -882,9 +1005,14 @@ public class MainActivity extends Activity {
                     public void onError(
                             String message) {
 
+                        clearContent();
+
+                        content.addView(
+                                title("پول هوشمند 💵"));
+
                         content.addView(
                                 text(
-                                        "\n❌ " +
+                                        "❌ " +
                                         message,
                                         17));
 
@@ -940,9 +1068,7 @@ public class MainActivity extends Activity {
                     MoneyItem m =
                             new MoneyItem();
 
-                    m.insCode =
-                            insCode;
-
+                    m.insCode = insCode;
                     m.buy = buy;
                     m.sell = sell;
                     m.net = net;
@@ -951,31 +1077,7 @@ public class MainActivity extends Activity {
                 }
             }
 
-            // مرتب‌سازی ورود خالص
-            for (int i = 0;
-                 i < candidates.size();
-                 i++) {
-
-                for (int j = i + 1;
-                     j < candidates.size();
-                     j++) {
-
-                    if (candidates.get(j).net >
-                            candidates.get(i).net) {
-
-                        MoneyItem temp =
-                                candidates.get(i);
-
-                        candidates.set(
-                                i,
-                                candidates.get(j));
-
-                        candidates.set(
-                                j,
-                                temp);
-                    }
-                }
-            }
+            sortMoneyItems(candidates);
 
             int limit =
                     Math.min(
@@ -1037,10 +1139,39 @@ public class MainActivity extends Activity {
 
         content.addView(
                 text(
-                        "\nتوجه: این مقدار فعلاً بر اساس حجم خرید و فروش حقیقی است؛ برای محاسبه ارزش ریالی دقیق باید قیمت هر نماد نیز لحاظ شود.",
+                        "\nتوجه: این مرحله حجم خالص حقیقی را نمایش می‌دهد. برای پول هوشمند ریالی دقیق، قیمت هر نماد نیز باید در محاسبه وارد شود.",
                         15));
 
         addBackButton();
+    }
+
+    private void sortMoneyItems(
+            List<MoneyItem> list) {
+
+        for (int i = 0;
+             i < list.size();
+             i++) {
+
+            for (int j = i + 1;
+                 j < list.size();
+                 j++) {
+
+                if (list.get(j).net >
+                        list.get(i).net) {
+
+                    MoneyItem temp =
+                            list.get(i);
+
+                    list.set(
+                            i,
+                            list.get(j));
+
+                    list.set(
+                            j,
+                            temp);
+                }
+            }
+        }
     }
 
     // =========================================================
@@ -1074,9 +1205,15 @@ public class MainActivity extends Activity {
                     public void onError(
                             String message) {
 
+                        clearContent();
+
+                        content.addView(
+                                title(
+                                        "ورود و خروج پول 🔄"));
+
                         content.addView(
                                 text(
-                                        "\n❌ " +
+                                        "❌ " +
                                         message,
                                         17));
 
@@ -1182,7 +1319,7 @@ public class MainActivity extends Activity {
 
         content.addView(
                 text(
-                        "\nاین مرحله حجم خالص را نشان می‌دهد؛ محاسبه پول ریالی در مرحله بعد با قیمت هر نماد انجام می‌شود.",
+                        "\nاین مرحله حجم خالص را نشان می‌دهد. محاسبه پول ریالی دقیق در مرحله بعد با قیمت هر نماد انجام می‌شود.",
                         15));
 
         addBackButton();
@@ -1238,6 +1375,9 @@ public class MainActivity extends Activity {
                     }
 
                     hideKeyboard(input);
+
+                    result.setText(
+                            "🟡 در حال جستجو...");
 
                     searchSymbol(
                             symbol,
@@ -1323,9 +1463,12 @@ public class MainActivity extends Activity {
                             .append("\n\n");
                 }
 
+                final String resultText =
+                        sb.toString();
+
                 handler.post(() ->
                         result.setText(
-                                sb.toString()));
+                                resultText));
 
             } catch (Exception e) {
 
@@ -1391,7 +1534,7 @@ public class MainActivity extends Activity {
     }
 
     // =========================================================
-    // پیشنهادها
+    // پیشنهادهای معاملاتی
     // =========================================================
 
     private void showSuggestions() {
@@ -1416,6 +1559,7 @@ public class MainActivity extends Activity {
                     v -> {
 
                         showMainMenu();
+
                         loadMarketData();
                     });
 
@@ -1442,39 +1586,7 @@ public class MainActivity extends Activity {
             }
         }
 
-        for (int i = 0;
-             i < list.size();
-             i++) {
-
-            for (int j = i + 1;
-                 j < list.size();
-                 j++) {
-
-                double pi =
-                        percent(
-                                list.get(i).close,
-                                list.get(i).yesterday);
-
-                double pj =
-                        percent(
-                                list.get(j).close,
-                                list.get(j).yesterday);
-
-                if (pj > pi) {
-
-                    MarketItem temp =
-                            list.get(i);
-
-                    list.set(
-                            i,
-                            list.get(j));
-
-                    list.set(
-                            j,
-                            temp);
-                }
-            }
-        }
+        sortByPercent(list);
 
         int limit =
                 Math.min(
@@ -1529,10 +1641,48 @@ public class MainActivity extends Activity {
 
         content.addView(
                 text(
-                        "\nاین فهرست صرفاً فیلتر اولیه داده بازار است و توصیه قطعی خرید یا فروش نیست.",
+                        "\nاین فهرست فیلتر اولیه داده بازار است و توصیه قطعی خرید یا فروش نیست.",
                         15));
 
         addBackButton();
+    }
+
+    private void sortByPercent(
+            List<MarketItem> list) {
+
+        for (int i = 0;
+             i < list.size();
+             i++) {
+
+            for (int j = i + 1;
+                 j < list.size();
+                 j++) {
+
+                double pi =
+                        percent(
+                                list.get(i).close,
+                                list.get(i).yesterday);
+
+                double pj =
+                        percent(
+                                list.get(j).close,
+                                list.get(j).yesterday);
+
+                if (pj > pi) {
+
+                    MarketItem temp =
+                            list.get(i);
+
+                    list.set(
+                            i,
+                            list.get(j));
+
+                    list.set(
+                            j,
+                            temp);
+                }
+            }
+        }
     }
 
     // =========================================================
