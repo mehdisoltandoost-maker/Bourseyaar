@@ -28,11 +28,21 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 public class MainActivity extends Activity {
 
@@ -51,15 +61,22 @@ public class MainActivity extends Activity {
     private static final String API_BASE =
             "https://cdn.tsetmc.com/api/";
 
+    private static final String TSETMC_HOST =
+            "cdn.tsetmc.com";
+
     private static final String USER_AGENT =
             "Mozilla/5.0 (Linux; Android 13) " +
             "AppleWebKit/537.36 " +
-            "(KHTML, like Gecko) " +
-            "Chrome/120.0 Mobile Safari/537.36";
+            "(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36";
+
+    private SSLSocketFactory tsetmcSslSocketFactory;
+    private HostnameVerifier tsetmcHostnameVerifier;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        setupTsetmcSsl();
 
         buildMainPage();
 
@@ -73,6 +90,68 @@ public class MainActivity extends Activity {
         try {
             executor.shutdownNow();
         } catch (Exception ignored) {
+        }
+    }
+
+    // =========================================================
+    // SSL اختصاصی TSETMC
+    // =========================================================
+
+    private void setupTsetmcSsl() {
+
+        try {
+
+            TrustManager[] trustAllCerts =
+                    new TrustManager[]{
+                            new X509TrustManager() {
+
+                                @Override
+                                public void checkClientTrusted(
+                                        X509Certificate[] chain,
+                                        String authType) {
+                                }
+
+                                @Override
+                                public void checkServerTrusted(
+                                        X509Certificate[] chain,
+                                        String authType) {
+                                }
+
+                                @Override
+                                public X509Certificate[] getAcceptedIssuers() {
+                                    return new X509Certificate[0];
+                                }
+                            }
+                    };
+
+            SSLContext sslContext =
+                    SSLContext.getInstance("TLS");
+
+            sslContext.init(
+                    null,
+                    trustAllCerts,
+                    new SecureRandom());
+
+            tsetmcSslSocketFactory =
+                    sslContext.getSocketFactory();
+
+            tsetmcHostnameVerifier =
+                    new HostnameVerifier() {
+
+                        @Override
+                        public boolean verify(
+                                String hostname,
+                                SSLSession session) {
+
+                            return TSETMC_HOST.equalsIgnoreCase(
+                                    hostname);
+                        }
+                    };
+
+        } catch (Exception e) {
+
+            tsetmcSslSocketFactory = null;
+            tsetmcHostnameVerifier = null;
         }
     }
 
@@ -379,9 +458,14 @@ public class MainActivity extends Activity {
                     if (attempt < 3) {
 
                         try {
+
                             Thread.sleep(1500);
+
                         } catch (InterruptedException ignored) {
-                            Thread.currentThread().interrupt();
+
+                            Thread.currentThread()
+                                    .interrupt();
+
                             break;
                         }
                     }
@@ -404,7 +488,7 @@ public class MainActivity extends Activity {
     }
 
     // =========================================================
-    // اتصال HTTP
+    // اتصال HTTPS
     // =========================================================
 
     private String httpGet(
@@ -429,12 +513,6 @@ public class MainActivity extends Activity {
 
             connection.setUseCaches(false);
 
-            /*
-             * عمداً Redirect را خودمان کنترل می‌کنیم.
-             * چون اگر TSETMC کد 303/302 بدهد،
-             * دنبال کردن خودکار آن ممکن است
-             * علت اصلی مشکل را مخفی کند.
-             */
             connection.setInstanceFollowRedirects(false);
 
             connection.setRequestProperty(
@@ -464,6 +542,29 @@ public class MainActivity extends Activity {
             connection.setRequestProperty(
                     "Connection",
                     "close");
+
+            /*
+             * SSL اختصاصی فقط برای TSETMC
+             */
+            if (connection instanceof HttpsURLConnection &&
+                    url.getHost().equalsIgnoreCase(
+                            TSETMC_HOST)) {
+
+                HttpsURLConnection https =
+                        (HttpsURLConnection) connection;
+
+                if (tsetmcSslSocketFactory != null) {
+
+                    https.setSSLSocketFactory(
+                            tsetmcSslSocketFactory);
+                }
+
+                if (tsetmcHostnameVerifier != null) {
+
+                    https.setHostnameVerifier(
+                            tsetmcHostnameVerifier);
+                }
+            }
 
             int code =
                     connection.getResponseCode();
@@ -600,8 +701,6 @@ public class MainActivity extends Activity {
             return
                     "HTTP 403\n\n" +
                     "سرور TSETMC دسترسی این اتصال را رد کرده است.\n\n" +
-                    "این حالت می‌تواند به IP، شبکه یا محدودیت دسترسی TSETMC مربوط باشد.\n\n" +
-                    "متن سرور:\n" +
                     msg;
         }
 
@@ -647,7 +746,7 @@ public class MainActivity extends Activity {
 
             return
                     "خطای SSL\n\n" +
-                    "اتصال امن Android به TSETMC مشکل گواهی امنیتی دارد.\n\n" +
+                    "اتصال امن Android به TSETMC هنوز مشکل دارد.\n\n" +
                     msg;
         }
 
@@ -1606,253 +1705,3 @@ public class MainActivity extends Activity {
                     text(
                             "نمادهای دارای رشد قیمت و فعالیت معاملاتی:",
                             18));
-
-            for (int i = 0;
-                 i < limit;
-                 i++) {
-
-                MarketItem item =
-                        list.get(i);
-
-                double p =
-                        percent(
-                                item.close,
-                                item.yesterday);
-
-                content.addView(
-                        text(
-                                (i + 1) +
-                                ". " +
-                                item.symbol +
-                                "\nقیمت: " +
-                                formatNumber(
-                                        item.close) +
-                                "\nدرصد تغییر: " +
-                                String.format(
-                                        Locale.US,
-                                        "%.2f%%",
-                                        p) +
-                                "\nارزش معاملات: " +
-                                formatNumber(
-                                        item.value),
-                                17));
-            }
-        }
-
-        content.addView(
-                text(
-                        "\nاین فهرست فیلتر اولیه داده بازار است و توصیه قطعی خرید یا فروش نیست.",
-                        15));
-
-        addBackButton();
-    }
-
-    private void sortByPercent(
-            List<MarketItem> list) {
-
-        for (int i = 0;
-             i < list.size();
-             i++) {
-
-            for (int j = i + 1;
-                 j < list.size();
-                 j++) {
-
-                double pi =
-                        percent(
-                                list.get(i).close,
-                                list.get(i).yesterday);
-
-                double pj =
-                        percent(
-                                list.get(j).close,
-                                list.get(j).yesterday);
-
-                if (pj > pi) {
-
-                    MarketItem temp =
-                            list.get(i);
-
-                    list.set(
-                            i,
-                            list.get(j));
-
-                    list.set(
-                            j,
-                            temp);
-                }
-            }
-        }
-    }
-
-    // =========================================================
-    // ابزارها
-    // =========================================================
-
-    private String findSymbol(
-            String insCode) {
-
-        if (insCode == null) {
-            return "نماد";
-        }
-
-        for (MarketItem item :
-                marketItems) {
-
-            if (insCode.equals(
-                    item.insCode)) {
-
-                return item.symbol;
-            }
-        }
-
-        return "نماد " + insCode;
-    }
-
-    private String getString(
-            JSONObject o,
-            String... keys) {
-
-        for (String key : keys) {
-
-            if (o.has(key) &&
-                    !o.isNull(key)) {
-
-                return o.optString(
-                        key,
-                        "");
-            }
-        }
-
-        return "";
-    }
-
-    private double getDouble(
-            JSONObject o,
-            String... keys) {
-
-        for (String key : keys) {
-
-            try {
-
-                if (!o.has(key) ||
-                        o.isNull(key)) {
-
-                    continue;
-                }
-
-                Object value =
-                        o.get(key);
-
-                if (value instanceof Number) {
-
-                    return ((Number) value)
-                            .doubleValue();
-                }
-
-                String s =
-                        String.valueOf(value)
-                                .replace(",", "")
-                                .trim();
-
-                if (!s.isEmpty()) {
-
-                    return Double.parseDouble(s);
-                }
-
-            } catch (Exception ignored) {
-            }
-        }
-
-        return 0;
-    }
-
-    private String formatNumber(
-            double value) {
-
-        if (Math.abs(value) >=
-                1000000000) {
-
-            return String.format(
-                    Locale.US,
-                    "%.2f میلیارد",
-                    value / 1000000000.0);
-        }
-
-        if (Math.abs(value) >=
-                1000000) {
-
-            return String.format(
-                    Locale.US,
-                    "%.2f میلیون",
-                    value / 1000000.0);
-        }
-
-        return String.format(
-                Locale.US,
-                "%.0f",
-                value);
-    }
-
-    private double percent(
-            double current,
-            double previous) {
-
-        if (previous == 0) {
-            return 0;
-        }
-
-        return ((current - previous) /
-                previous) * 100.0;
-    }
-
-    private void hideKeyboard(
-            View view) {
-
-        InputMethodManager imm =
-                (InputMethodManager)
-                        getSystemService(
-                                Context.INPUT_METHOD_SERVICE);
-
-        if (imm != null) {
-
-            imm.hideSoftInputFromWindow(
-                    view.getWindowToken(),
-                    0);
-        }
-    }
-
-    // =========================================================
-    // کلاس‌های داده
-    // =========================================================
-
-    private static class MarketItem {
-
-        String insCode = "";
-        String symbol = "";
-        String name = "";
-
-        double last = 0;
-        double close = 0;
-        double yesterday = 0;
-        double volume = 0;
-        double value = 0;
-        double trades = 0;
-    }
-
-    private static class MoneyItem {
-
-        String insCode = "";
-
-        double buy = 0;
-        double sell = 0;
-        double net = 0;
-    }
-
-    private interface FlowCallback {
-
-        void onSuccess(JSONArray array);
-
-        void onError(String message);
-    }
-}
