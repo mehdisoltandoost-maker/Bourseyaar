@@ -543,9 +543,6 @@ public class MainActivity extends Activity {
                     "Connection",
                     "close");
 
-            /*
-             * SSL اختصاصی فقط برای TSETMC
-             */
             if (connection instanceof HttpsURLConnection &&
                     url.getHost().equalsIgnoreCase(
                             TSETMC_HOST)) {
@@ -1583,7 +1580,7 @@ public class MainActivity extends Activity {
     }
 
     // =========================================================
-    // بنیادی
+    // تحلیل بنیادی
     // =========================================================
 
     private void showFundamental() {
@@ -1608,7 +1605,7 @@ public class MainActivity extends Activity {
     }
 
     // =========================================================
-    // تکنیکال
+    // تحلیل تکنیکال
     // =========================================================
 
     private void showTechnical() {
@@ -1705,3 +1702,324 @@ public class MainActivity extends Activity {
                     text(
                             "نمادهای دارای رشد قیمت و فعالیت معاملاتی:",
                             18));
+
+            for (int i = 0;
+                 i < limit;
+                 i++) {
+
+                MarketItem item =
+                        list.get(i);
+
+                double change =
+                        percent(
+                                item.close,
+                                item.yesterday);
+
+                content.addView(
+                        text(
+                                (i + 1) +
+                                ". " +
+                                item.symbol +
+                                "\nقیمت پایانی: " +
+                                formatNumber(item.close) +
+                                "\nدرصد تغییر: " +
+                                String.format(
+                                        Locale.US,
+                                        "%.2f%%",
+                                        change) +
+                                "\nحجم: " +
+                                formatNumber(item.volume) +
+                                "\nارزش: " +
+                                formatNumber(item.value),
+                                17));
+            }
+        }
+
+        addBackButton();
+    }
+
+    // =========================================================
+    // مرتب‌سازی بر اساس درصد تغییر
+    // =========================================================
+
+    private void sortByPercent(
+            List<MarketItem> list) {
+
+        for (int i = 0;
+             i < list.size();
+             i++) {
+
+            for (int j = i + 1;
+                 j < list.size();
+                 j++) {
+
+                double p1 =
+                        percent(
+                                list.get(i).close,
+                                list.get(i).yesterday);
+
+                double p2 =
+                        percent(
+                                list.get(j).close,
+                                list.get(j).yesterday);
+
+                if (p2 > p1) {
+
+                    MarketItem temp =
+                            list.get(i);
+
+                    list.set(
+                            i,
+                            list.get(j));
+
+                    list.set(
+                            j,
+                            temp);
+                }
+            }
+        }
+    }
+
+    // =========================================================
+    // پیدا کردن نماد
+    // =========================================================
+
+    private String findSymbol(
+            String insCode) {
+
+        if (insCode == null ||
+                insCode.trim().isEmpty()) {
+
+            return "نماد نامشخص";
+        }
+
+        for (MarketItem item :
+                marketItems) {
+
+            if (insCode.equals(
+                    item.insCode)) {
+
+                return item.symbol;
+            }
+        }
+
+        return insCode;
+    }
+
+    // =========================================================
+    // دریافت String از JSON
+    // =========================================================
+
+    private String getString(
+            JSONObject object,
+            String... keys) {
+
+        if (object == null ||
+                keys == null) {
+
+            return "";
+        }
+
+        for (String key : keys) {
+
+            try {
+
+                if (object.has(key) &&
+                        !object.isNull(key)) {
+
+                    String value =
+                            object.getString(key);
+
+                    if (value != null &&
+                            !value.trim().isEmpty() &&
+                            !"null".equalsIgnoreCase(
+                                    value)) {
+
+                        return value;
+                    }
+                }
+
+            } catch (Exception ignored) {
+            }
+        }
+
+        return "";
+    }
+
+    // =========================================================
+    // دریافت عدد از JSON
+    // =========================================================
+
+    private double getDouble(
+            JSONObject object,
+            String... keys) {
+
+        if (object == null ||
+                keys == null) {
+
+            return 0;
+        }
+
+        for (String key : keys) {
+
+            try {
+
+                if (!object.has(key) ||
+                        object.isNull(key)) {
+
+                    continue;
+                }
+
+                Object value =
+                        object.get(key);
+
+                if (value instanceof Number) {
+
+                    return ((Number) value)
+                            .doubleValue();
+                }
+
+                String s =
+                        String.valueOf(value)
+                                .trim();
+
+                if (!s.isEmpty() &&
+                        !"null".equalsIgnoreCase(s)) {
+
+                    s = s.replace(",", "");
+
+                    return Double.parseDouble(s);
+                }
+
+            } catch (Exception ignored) {
+            }
+        }
+
+        return 0;
+    }
+
+    // =========================================================
+    // درصد تغییر
+    // =========================================================
+
+    private double percent(
+            double current,
+            double previous) {
+
+        if (previous == 0) {
+            return 0;
+        }
+
+        return (
+                (current - previous)
+                        / previous
+        ) * 100.0;
+    }
+
+    // =========================================================
+    // فرمت عدد
+    // =========================================================
+
+    private String formatNumber(
+            double value) {
+
+        if (Math.abs(value) >= 1000000000) {
+
+            return String.format(
+                    Locale.US,
+                    "%.2f میلیارد",
+                    value / 1000000000.0);
+
+        } else if (
+                Math.abs(value) >= 1000000) {
+
+            return String.format(
+                    Locale.US,
+                    "%.2f میلیون",
+                    value / 1000000.0);
+
+        } else if (
+                Math.abs(value) >= 1000) {
+
+            return String.format(
+                    Locale.US,
+                    "%.0f هزار",
+                    value / 1000.0);
+        }
+
+        return String.format(
+                Locale.US,
+                "%.0f",
+                value);
+    }
+
+    // =========================================================
+    // مخفی کردن صفحه‌کلید
+    // =========================================================
+
+    private void hideKeyboard(
+            View view) {
+
+        try {
+
+            InputMethodManager imm =
+                    (InputMethodManager)
+                            getSystemService(
+                                    Context.INPUT_METHOD_SERVICE);
+
+            if (imm != null) {
+
+                imm.hideSoftInputFromWindow(
+                        view.getWindowToken(),
+                        0);
+            }
+
+        } catch (Exception ignored) {
+        }
+    }
+
+    // =========================================================
+    // مدل اطلاعات بازار
+    // =========================================================
+
+    private static class MarketItem {
+
+        String insCode = "";
+        String symbol = "";
+        String name = "";
+
+        double last = 0;
+        double close = 0;
+        double yesterday = 0;
+
+        double volume = 0;
+        double value = 0;
+        double trades = 0;
+    }
+
+    // =========================================================
+    // مدل پول حقیقی
+    // =========================================================
+
+    private static class MoneyItem {
+
+        String insCode = "";
+
+        double buy = 0;
+        double sell = 0;
+        double net = 0;
+    }
+
+    // =========================================================
+    // Callback دریافت حقیقی و حقوقی
+    // =========================================================
+
+    private interface FlowCallback {
+
+        void onSuccess(
+                JSONArray array);
+
+        void onError(
+                String message);
+    }
+}
