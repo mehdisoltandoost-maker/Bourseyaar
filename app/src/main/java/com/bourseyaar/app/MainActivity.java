@@ -44,14 +44,20 @@ import javax.net.ssl.X509TrustManager;
 public class MainActivity extends Activity {
 
     private LinearLayout root;
+    private LinearLayout menu;
     private LinearLayout content;
+    private ScrollView scrollView;
     private TextView title;
     private TextView status;
 
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private final Handler handler = new Handler();
+    private final ExecutorService executor =
+            Executors.newSingleThreadExecutor();
 
-    private final List<MarketItem> marketItems = new ArrayList<>();
+    private final Handler handler =
+            new Handler();
+
+    private final List<MarketItem> marketItems =
+            new ArrayList<>();
 
     private static final String BASE_URL =
             "https://cdn.tsetmc.com/api/";
@@ -76,14 +82,17 @@ public class MainActivity extends Activity {
             "&RefID=0";
 
     private static final String MONEY_URL =
-            BASE_URL + "ClientType/GetClientTypeAll";
+            BASE_URL +
+            "ClientType/GetClientTypeAll";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setupTsetmcSsl();
+
         buildUi();
+
         loadMarketData();
     }
 
@@ -93,104 +102,188 @@ public class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.WHITE);
 
+        // عنوان اصلی برنامه
         title = new TextView(this);
+
         title.setText("بورس‌یار");
         title.setTextSize(25);
         title.setTextColor(Color.rgb(20, 70, 120));
-        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        title.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
         title.setGravity(Gravity.CENTER);
-        title.setPadding(10, 25, 10, 15);
+        title.setPadding(
+                10,
+                25,
+                10,
+                15
+        );
 
-        root.addView(title,
+        root.addView(
+                title,
                 new LinearLayout.LayoutParams(
                         -1,
                         LinearLayout.LayoutParams.WRAP_CONTENT
-                ));
+                )
+        );
 
-        LinearLayout menu = new LinearLayout(this);
-        menu.setOrientation(LinearLayout.VERTICAL);
-        menu.setPadding(12, 5, 12, 5);
+        // =========================
+        // منوی اصلی
+        // =========================
 
-        addButton(menu, "اطلاعات کلی بازار", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showMarketOverview();
-            }
-        });
+        menu = new LinearLayout(this);
 
-        addButton(menu, "پول هوشمند", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showSmartMoney();
-            }
-        });
+        menu.setOrientation(
+                LinearLayout.VERTICAL
+        );
 
-        addButton(menu, "ورود و خروج پول", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showMoneyFlow();
-            }
-        });
+        menu.setPadding(
+                12,
+                5,
+                12,
+                5
+        );
 
-        addButton(menu, "تحلیل بنیادی", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showFundamental();
-            }
-        });
+        addButton(
+                menu,
+                "اطلاعات کلی بازار",
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showMarketOverview();
+                    }
+                }
+        );
 
-        addButton(menu, "تحلیل تکنیکال", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showTechnical();
-            }
-        });
+        addButton(
+                menu,
+                "پول هوشمند",
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showSmartMoney();
+                    }
+                }
+        );
 
-        addButton(menu, "بررسی نمادها", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showSymbols();
-            }
-        });
+        addButton(
+                menu,
+                "ورود و خروج پول",
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showMoneyFlow();
+                    }
+                }
+        );
 
-        addButton(menu, "پیشنهادهای معاملاتی", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showSuggestions();
-            }
-        });
+        addButton(
+                menu,
+                "تحلیل بنیادی",
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showFundamental();
+                    }
+                }
+        );
 
-        addButton(menu, "به‌روزرسانی اطلاعات", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                loadMarketData();
-            }
-        });
+        addButton(
+                menu,
+                "تحلیل تکنیکال",
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showTechnical();
+                    }
+                }
+        );
 
-        root.addView(menu,
+        addButton(
+                menu,
+                "بررسی نمادها",
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showSymbols();
+                    }
+                }
+        );
+
+        addButton(
+                menu,
+                "پیشنهادهای معاملاتی",
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showSuggestions();
+                    }
+                }
+        );
+
+        addButton(
+                menu,
+                "به‌روزرسانی اطلاعات",
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        loadMarketData();
+                    }
+                }
+        );
+
+        root.addView(
+                menu,
                 new LinearLayout.LayoutParams(
                         -1,
                         LinearLayout.LayoutParams.WRAP_CONTENT
-                ));
+                )
+        );
 
+        // وضعیت اتصال
         status = new TextView(this);
-        status.setText("در حال اتصال به TSETMC...");
+
+        status.setText(
+                "در حال اتصال به TSETMC..."
+        );
+
         status.setTextSize(14);
         status.setTextColor(Color.DKGRAY);
         status.setGravity(Gravity.CENTER);
-        status.setPadding(10, 10, 10, 10);
+        status.setPadding(
+                10,
+                10,
+                10,
+                10
+        );
 
-        root.addView(status,
+        root.addView(
+                status,
                 new LinearLayout.LayoutParams(
                         -1,
                         LinearLayout.LayoutParams.WRAP_CONTENT
-                ));
+                )
+        );
 
-        ScrollView scrollView = new ScrollView(this);
+        // =========================
+        // بخش محتوا
+        // =========================
+
+        scrollView = new ScrollView(this);
 
         content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(15, 10, 15, 30);
+
+        content.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        content.setPadding(
+                15,
+                10,
+                15,
+                30
+        );
 
         scrollView.addView(content);
 
@@ -208,12 +301,89 @@ public class MainActivity extends Activity {
         showWelcome();
     }
 
+    // =========================
+    // باز کردن صفحه مستقل
+    // =========================
+
+    private void openPage(String pageTitle) {
+
+        // مخفی کردن منوی اصلی
+        if (menu != null) {
+            menu.setVisibility(View.GONE);
+        }
+
+        // مخفی کردن وضعیت اتصال
+        if (status != null) {
+            status.setVisibility(View.GONE);
+        }
+
+        // تغییر عنوان
+        title.setText(pageTitle);
+
+        // پاک کردن محتوای قبلی
+        clearContent();
+
+        // دکمه برگشت
+        Button back =
+                new Button(this);
+
+        back.setText(
+                "← بازگشت به منوی اصلی"
+        );
+
+        back.setTextSize(16);
+        back.setAllCaps(false);
+
+        back.setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+
+                        showHome();
+                    }
+                }
+        );
+
+        content.addView(
+                back,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+        );
+    }
+
+    // =========================
+    // برگشت به صفحه اصلی
+    // =========================
+
+    private void showHome() {
+
+        if (menu != null) {
+            menu.setVisibility(View.VISIBLE);
+        }
+
+        if (status != null) {
+            status.setVisibility(View.VISIBLE);
+        }
+
+        title.setText("بورس‌یار");
+
+        showWelcome();
+    }
+
+    // =========================
+    // دکمه‌های منو
+    // =========================
+
     private void addButton(
             LinearLayout parent,
             String text,
             View.OnClickListener listener) {
 
-        Button button = new Button(this);
+        Button button =
+                new Button(this);
+
         button.setText(text);
         button.setTextSize(16);
         button.setAllCaps(false);
@@ -225,10 +395,22 @@ public class MainActivity extends Activity {
                         LinearLayout.LayoutParams.WRAP_CONTENT
                 );
 
-        params.setMargins(0, 4, 0, 4);
+        params.setMargins(
+                0,
+                4,
+                0,
+                4
+        );
 
-        parent.addView(button, params);
+        parent.addView(
+                button,
+                params
+        );
     }
+
+    // =========================
+    // صفحه خوش‌آمدگویی
+    // =========================
 
     private void showWelcome() {
 
@@ -256,7 +438,7 @@ public class MainActivity extends Activity {
         );
 
         addText(
-                "وضعیت: در انتظار دریافت اطلاعات TSETMC",
+                "وضعیت: اطلاعات بازار در حال دریافت است.",
                 15,
                 Color.DKGRAY,
                 false
@@ -264,6 +446,7 @@ public class MainActivity extends Activity {
     }
 
     private void clearContent() {
+
         if (content != null) {
             content.removeAllViews();
         }
@@ -275,156 +458,242 @@ public class MainActivity extends Activity {
             int color,
             boolean bold) {
 
-        TextView tv = new TextView(this);
+        TextView tv =
+                new TextView(this);
+
         tv.setText(text);
         tv.setTextSize(size);
         tv.setTextColor(color);
-        tv.setPadding(5, 8, 5, 8);
+
+        tv.setPadding(
+                5,
+                8,
+                5,
+                8
+        );
 
         if (bold) {
-            tv.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            tv.setTypeface(
+                    Typeface.DEFAULT,
+                    Typeface.BOLD
+            );
         }
 
         content.addView(tv);
     }
 
-    private void setStatus(final String text) {
+    // =========================
+    // وضعیت اتصال
+    // =========================
 
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                if (status != null) {
-                    status.setText(text);
+    private void setStatus(
+            final String text) {
+
+        handler.post(
+                new Runnable() {
+                    @Override
+                    public void run() {
+
+                        if (status != null) {
+                            status.setText(text);
+                        }
+                    }
                 }
-            }
-        });
+        );
     }
+
+    // =========================
+    // دریافت اطلاعات بازار
+    // =========================
 
     private void loadMarketData() {
 
-        setStatus("در حال دریافت اطلاعات بازار از TSETMC...");
-
-        clearContent();
-
-        addText(
-                "دریافت اطلاعات بازار",
-                21,
-                Color.rgb(20, 70, 120),
-                true
+        setStatus(
+                "در حال دریافت اطلاعات بازار از TSETMC..."
         );
 
-        addText(
-                "لطفاً چند ثانیه صبر کنید...",
-                15,
-                Color.DKGRAY,
-                false
-        );
+        // فقط اگر در صفحه اصلی هستیم
+        // پیام دریافت اطلاعات را نشان بده
+        if (menu != null &&
+                menu.getVisibility() == View.VISIBLE) {
 
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
+            clearContent();
 
-                try {
+            addText(
+                    "دریافت اطلاعات بازار",
+                    21,
+                    Color.rgb(20, 70, 120),
+                    true
+            );
 
-                    String response = httpGet(MARKET_URL);
+            addText(
+                    "لطفاً چند ثانیه صبر کنید...",
+                    15,
+                    Color.DKGRAY,
+                    false
+            );
+        }
 
-                    if (response == null || response.trim().length() == 0) {
-                        throw new Exception(
-                                "پاسخ خالی از TSETMC دریافت شد."
-                        );
-                    }
+        executor.execute(
+                new Runnable() {
+                    @Override
+                    public void run() {
 
-                    parseMarketWatch(response);
+                        try {
 
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
+                            String response =
+                                    httpGet(MARKET_URL);
 
-                            if (marketItems.size() > 0) {
+                            if (response == null ||
+                                    response.trim().length() == 0) {
 
-                                setStatus(
-                                        "اتصال موفق؛ " +
-                                        marketItems.size() +
-                                        " نماد دریافت شد."
-                                );
-
-                                showMarketOverview();
-
-                            } else {
-
-                                setStatus(
-                                        "اتصال برقرار شد ولی داده بازار خالی است."
-                                );
-
-                                clearContent();
-
-                                addText(
-                                        "اتصال به TSETMC برقرار شد",
-                                        20,
-                                        Color.rgb(20, 100, 50),
-                                        true
-                                );
-
-                                addText(
-                                        "اما پاسخ دیده‌بان بازار خالی است.",
-                                        16,
-                                        Color.DKGRAY,
-                                        false
-                                );
-
-                                addText(
-                                        "ممکن است TSETMC در این لحظه داده کامل بازار را ارسال نکند.",
-                                        15,
-                                        Color.GRAY,
-                                        false
+                                throw new Exception(
+                                        "پاسخ خالی از TSETMC دریافت شد."
                                 );
                             }
+
+                            parseMarketWatch(response);
+
+                            handler.post(
+                                    new Runnable() {
+                                        @Override
+                                        public void run() {
+
+                                            if (marketItems.size() > 0) {
+
+                                                setStatus(
+                                                        "اتصال موفق؛ " +
+                                                        marketItems.size() +
+                                                        " نماد دریافت شد."
+                                                );
+
+                                                /*
+                                                 * نکته مهم:
+                                                 * دیگر به صورت خودکار
+                                                 * صفحه اطلاعات کلی بازار
+                                                 * باز نمی‌شود.
+                                                 *
+                                                 * بنابراین منوی اصلی
+                                                 * زیر اطلاعات بازار
+                                                 * ظاهر نمی‌شود.
+                                                 */
+
+                                                if (menu.getVisibility()
+                                                        != View.VISIBLE) {
+
+                                                    // اگر کاربر داخل صفحه‌ای است
+                                                    // همان صفحه باقی بماند.
+
+                                                } else {
+
+                                                    showWelcome();
+                                                }
+
+                                            } else {
+
+                                                setStatus(
+                                                        "اتصال برقرار شد ولی داده بازار خالی است."
+                                                );
+
+                                                if (menu.getVisibility()
+                                                        == View.VISIBLE) {
+
+                                                    clearContent();
+
+                                                    addText(
+                                                            "اتصال به TSETMC برقرار شد",
+                                                            20,
+                                                            Color.rgb(
+                                                                    20,
+                                                                    100,
+                                                                    50
+                                                            ),
+                                                            true
+                                                    );
+
+                                                    addText(
+                                                            "اما پاسخ دیده‌بان بازار خالی است.",
+                                                            16,
+                                                            Color.DKGRAY,
+                                                            false
+                                                    );
+
+                                                    addText(
+                                                            "ممکن است TSETMC در این لحظه داده کامل بازار را ارسال نکند.",
+                                                            15,
+                                                            Color.GRAY,
+                                                            false
+                                                    );
+                                                }
+                                            }
+                                        }
+                                    }
+                            );
+
+                        } catch (
+                                final Exception e) {
+
+                            handler.post(
+                                    new Runnable() {
+                                        @Override
+                                        public void run() {
+
+                                            setStatus(
+                                                    "خطا در دریافت اطلاعات"
+                                            );
+
+                                            if (menu.getVisibility()
+                                                    == View.VISIBLE) {
+
+                                                clearContent();
+
+                                                addText(
+                                                        "خطا در اتصال به TSETMC",
+                                                        21,
+                                                        Color.rgb(
+                                                                180,
+                                                                30,
+                                                                30
+                                                        ),
+                                                        true
+                                                );
+
+                                                addText(
+                                                        getReadableError(e),
+                                                        15,
+                                                        Color.DKGRAY,
+                                                        false
+                                                );
+
+                                                addText(
+                                                        "دوباره گزینه «به‌روزرسانی اطلاعات» را امتحان کنید.",
+                                                        15,
+                                                        Color.GRAY,
+                                                        false
+                                                );
+                                            }
+                                        }
+                                    }
+                            );
                         }
-                    });
-
-                } catch (final Exception e) {
-
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-
-                            setStatus("خطا در دریافت اطلاعات");
-
-                            clearContent();
-
-                            addText(
-                                    "خطا در اتصال به TSETMC",
-                                    21,
-                                    Color.rgb(180, 30, 30),
-                                    true
-                            );
-
-                            addText(
-                                    getReadableError(e),
-                                    15,
-                                    Color.DKGRAY,
-                                    false
-                            );
-
-                            addText(
-                                    "دوباره گزینه «به‌روزرسانی اطلاعات» را امتحان کنید.",
-                                    15,
-                                    Color.GRAY,
-                                    false
-                            );
-                        }
-                    });
+                    }
                 }
-            }
-        });
+        );
     }
 
-    private String httpGet(String address) throws Exception {
+    // =========================
+    // HTTP
+    // =========================
 
-        URL url = new URL(address);
+    private String httpGet(
+            String address) throws Exception {
+
+        URL url =
+                new URL(address);
 
         HttpURLConnection connection =
-                (HttpURLConnection) url.openConnection();
+                (HttpURLConnection)
+                        url.openConnection();
 
         if (connection instanceof HttpsURLConnection) {
 
@@ -432,7 +701,8 @@ public class MainActivity extends Activity {
                     (HttpsURLConnection) connection;
 
             https.setSSLSocketFactory(
-                    getUnsafeSslContext().getSocketFactory()
+                    getUnsafeSslContext()
+                            .getSocketFactory()
             );
 
             https.setHostnameVerifier(
@@ -442,22 +712,32 @@ public class MainActivity extends Activity {
                                 String hostname,
                                 SSLSession session) {
 
-                            return "cdn.tsetmc.com".equalsIgnoreCase(hostname);
+                            return "cdn.tsetmc.com"
+                                    .equalsIgnoreCase(hostname);
                         }
                     }
             );
         }
 
         connection.setRequestMethod("GET");
-        connection.setConnectTimeout(20000);
-        connection.setReadTimeout(30000);
+
+        connection.setConnectTimeout(
+                20000
+        );
+
+        connection.setReadTimeout(
+                30000
+        );
+
         connection.setUseCaches(false);
         connection.setDoInput(true);
 
         connection.setRequestProperty(
                 "User-Agent",
-                "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 " +
-                "(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36"
+                "Mozilla/5.0 (Linux; Android 13) " +
+                "AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) " +
+                "Chrome/120.0 Mobile Safari/537.36"
         );
 
         connection.setRequestProperty(
@@ -490,17 +770,26 @@ public class MainActivity extends Activity {
                 "https://tsetmc.com/"
         );
 
-        int code = connection.getResponseCode();
+        int code =
+                connection.getResponseCode();
 
         InputStream input;
 
-        if (code >= 200 && code < 300) {
-            input = connection.getInputStream();
+        if (code >= 200 &&
+                code < 300) {
+
+            input =
+                    connection.getInputStream();
+
         } else {
-            input = connection.getErrorStream();
+
+            input =
+                    connection.getErrorStream();
 
             if (input == null) {
-                throw new Exception("HTTP " + code);
+                throw new Exception(
+                        "HTTP " + code
+                );
             }
         }
 
@@ -517,23 +806,36 @@ public class MainActivity extends Activity {
 
         String line;
 
-        while ((line = reader.readLine()) != null) {
+        while ((line =
+                reader.readLine()) != null) {
+
             result.append(line);
         }
 
         reader.close();
+
         connection.disconnect();
 
-        if (code < 200 || code >= 300) {
+        if (code < 200 ||
+                code >= 300) {
+
             throw new Exception(
-                    "HTTP " + code + "\n" + result.toString()
+                    "HTTP " +
+                    code +
+                    "\n" +
+                    result.toString()
             );
         }
 
         return result.toString();
     }
 
-    private SSLContext getUnsafeSslContext() throws Exception {
+    // =========================
+    // SSL
+    // =========================
+
+    private SSLContext getUnsafeSslContext()
+            throws Exception {
 
         TrustManager[] trustAll =
                 new TrustManager[] {
@@ -577,29 +879,37 @@ public class MainActivity extends Activity {
             SSLContext context =
                     getUnsafeSslContext();
 
-            HttpsURLConnection.setDefaultSSLSocketFactory(
-                    context.getSocketFactory()
-            );
+            HttpsURLConnection
+                    .setDefaultSSLSocketFactory(
+                            context.getSocketFactory()
+                    );
 
-            HttpsURLConnection.setDefaultHostnameVerifier(
-                    new HostnameVerifier() {
-                        @Override
-                        public boolean verify(
-                                String hostname,
-                                SSLSession session) {
+            HttpsURLConnection
+                    .setDefaultHostnameVerifier(
+                            new HostnameVerifier() {
+                                @Override
+                                public boolean verify(
+                                        String hostname,
+                                        SSLSession session) {
 
-                            return "cdn.tsetmc.com"
-                                    .equalsIgnoreCase(hostname);
-                        }
-                    }
-            );
+                                    return "cdn.tsetmc.com"
+                                            .equalsIgnoreCase(
+                                                    hostname
+                                            );
+                                }
+                            }
+                    );
 
         } catch (Exception ignored) {
         }
     }
 
-    private void parseMarketWatch(String response)
-            throws Exception {
+    // =========================
+    // Parser بازار
+    // =========================
+
+    private void parseMarketWatch(
+            String response) throws Exception {
 
         marketItems.clear();
 
@@ -622,7 +932,10 @@ public class MainActivity extends Activity {
                         rootObject.get(key);
 
                 if (value instanceof JSONArray) {
-                    array = (JSONArray) value;
+
+                    array =
+                            (JSONArray) value;
+
                     break;
                 }
             }
@@ -637,7 +950,9 @@ public class MainActivity extends Activity {
             return;
         }
 
-        for (int i = 0; i < array.length(); i++) {
+        for (int i = 0;
+             i < array.length();
+             i++) {
 
             JSONObject obj =
                     array.optJSONObject(i);
@@ -658,17 +973,45 @@ public class MainActivity extends Activity {
 
             item.symbol =
                     firstNonEmpty(
-                            getString(obj, "lVal18AFC", ""),
-                            getString(obj, "lVal18", ""),
-                            getString(obj, "symbol", ""),
-                            getString(obj, "symbolName", "")
+                            getString(
+                                    obj,
+                                    "lVal18AFC",
+                                    ""
+                            ),
+                            getString(
+                                    obj,
+                                    "lVal18",
+                                    ""
+                            ),
+                            getString(
+                                    obj,
+                                    "symbol",
+                                    ""
+                            ),
+                            getString(
+                                    obj,
+                                    "symbolName",
+                                    ""
+                            )
                     );
 
             item.name =
                     firstNonEmpty(
-                            getString(obj, "lVal30", ""),
-                            getString(obj, "name", ""),
-                            getString(obj, "title", "")
+                            getString(
+                                    obj,
+                                    "lVal30",
+                                    ""
+                            ),
+                            getString(
+                                    obj,
+                                    "name",
+                                    ""
+                            ),
+                            getString(
+                                    obj,
+                                    "title",
+                                    ""
+                            )
                     );
 
             item.last =
@@ -678,7 +1021,11 @@ public class MainActivity extends Activity {
                             getDouble(
                                     obj,
                                     "pl",
-                                    getDouble(obj, "last", 0)
+                                    getDouble(
+                                            obj,
+                                            "last",
+                                            0
+                                    )
                             )
                     );
 
@@ -689,7 +1036,11 @@ public class MainActivity extends Activity {
                             getDouble(
                                     obj,
                                     "pc",
-                                    getDouble(obj, "close", 0)
+                                    getDouble(
+                                            obj,
+                                            "close",
+                                            0
+                                    )
                             )
                     );
 
@@ -700,7 +1051,11 @@ public class MainActivity extends Activity {
                             getDouble(
                                     obj,
                                     "py",
-                                    getDouble(obj, "yesterday", 0)
+                                    getDouble(
+                                            obj,
+                                            "yesterday",
+                                            0
+                                    )
                             )
                     );
 
@@ -708,21 +1063,33 @@ public class MainActivity extends Activity {
                     getDouble(
                             obj,
                             "priceFirst",
-                            getDouble(obj, "pf", 0)
+                            getDouble(
+                                    obj,
+                                    "pf",
+                                    0
+                            )
                     );
 
             item.min =
                     getDouble(
                             obj,
                             "priceMin",
-                            getDouble(obj, "pmin", 0)
+                            getDouble(
+                                    obj,
+                                    "pmin",
+                                    0
+                            )
                     );
 
             item.max =
                     getDouble(
                             obj,
                             "priceMax",
-                            getDouble(obj, "pmax", 0)
+                            getDouble(
+                                    obj,
+                                    "pmax",
+                                    0
+                            )
                     );
 
             item.volume =
@@ -732,7 +1099,11 @@ public class MainActivity extends Activity {
                             getDouble(
                                     obj,
                                     "tvol",
-                                    getDouble(obj, "volume", 0)
+                                    getDouble(
+                                            obj,
+                                            "volume",
+                                            0
+                                    )
                             )
                     );
 
@@ -743,7 +1114,11 @@ public class MainActivity extends Activity {
                             getDouble(
                                     obj,
                                     "tval",
-                                    getDouble(obj, "value", 0)
+                                    getDouble(
+                                            obj,
+                                            "value",
+                                            0
+                                    )
                             )
                     );
 
@@ -754,7 +1129,11 @@ public class MainActivity extends Activity {
                             getDouble(
                                     obj,
                                     "tno",
-                                    getDouble(obj, "trades", 0)
+                                    getDouble(
+                                            obj,
+                                            "trades",
+                                            0
+                                    )
                             )
                     );
 
@@ -773,8 +1152,11 @@ public class MainActivity extends Activity {
                     item.yesterday != 0) {
 
                 item.percent =
-                        ((item.close - item.yesterday)
-                                / item.yesterday) * 100.0;
+                        ((item.close -
+                                item.yesterday)
+                                /
+                                item.yesterday)
+                                * 100.0;
             }
 
             if (item.symbol.length() > 0 ||
@@ -785,15 +1167,14 @@ public class MainActivity extends Activity {
         }
     }
 
+    // =========================
+    // اطلاعات کلی بازار
+    // =========================
+
     private void showMarketOverview() {
 
-        clearContent();
-
-        addText(
-                "اطلاعات کلی بازار",
-                22,
-                Color.rgb(20, 70, 120),
-                true
+        openPage(
+                "اطلاعات کلی بازار"
         );
 
         if (marketItems.size() == 0) {
@@ -816,17 +1197,28 @@ public class MainActivity extends Activity {
         double totalValue = 0;
         double totalTrades = 0;
 
-        for (MarketItem item : marketItems) {
+        for (MarketItem item :
+                marketItems) {
 
-            totalVolume += item.volume;
-            totalValue += item.value;
-            totalTrades += item.trades;
+            totalVolume +=
+                    item.volume;
+
+            totalValue +=
+                    item.value;
+
+            totalTrades +=
+                    item.trades;
 
             if (item.percent > 0.001) {
+
                 positive++;
+
             } else if (item.percent < -0.001) {
+
                 negative++;
+
             } else {
+
                 unchanged++;
             }
         }
@@ -840,9 +1232,12 @@ public class MainActivity extends Activity {
         );
 
         addText(
-                "مثبت: " + positive +
-                        "    منفی: " + negative +
-                        "    بدون تغییر: " + unchanged,
+                "مثبت: " +
+                        positive +
+                        "    منفی: " +
+                        negative +
+                        "    بدون تغییر: " +
+                        unchanged,
                 16,
                 Color.DKGRAY,
                 false
@@ -850,7 +1245,9 @@ public class MainActivity extends Activity {
 
         addText(
                 "حجم معاملات: " +
-                        formatNumber(totalVolume),
+                        formatNumber(
+                                totalVolume
+                        ),
                 15,
                 Color.DKGRAY,
                 false
@@ -858,7 +1255,9 @@ public class MainActivity extends Activity {
 
         addText(
                 "ارزش معاملات: " +
-                        formatNumber(totalValue),
+                        formatNumber(
+                                totalValue
+                        ),
                 15,
                 Color.DKGRAY,
                 false
@@ -866,7 +1265,9 @@ public class MainActivity extends Activity {
 
         addText(
                 "تعداد معاملات: " +
-                        formatNumber(totalTrades),
+                        formatNumber(
+                                totalTrades
+                        ),
                 15,
                 Color.DKGRAY,
                 false
@@ -880,9 +1281,14 @@ public class MainActivity extends Activity {
         );
 
         int limit =
-                Math.min(30, marketItems.size());
+                Math.min(
+                        30,
+                        marketItems.size()
+                );
 
-        for (int i = 0; i < limit; i++) {
+        for (int i = 0;
+             i < limit;
+             i++) {
 
             MarketItem item =
                     marketItems.get(i);
@@ -891,7 +1297,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void addMarketRow(MarketItem item) {
+    private void addMarketRow(
+            MarketItem item) {
 
         LinearLayout box =
                 new LinearLayout(this);
@@ -900,7 +1307,12 @@ public class MainActivity extends Activity {
                 LinearLayout.VERTICAL
         );
 
-        box.setPadding(8, 10, 8, 10);
+        box.setPadding(
+                8,
+                10,
+                8,
+                10
+        );
 
         String symbol =
                 item.symbol.length() > 0
@@ -910,28 +1322,46 @@ public class MainActivity extends Activity {
         String line1 =
                 symbol +
                 "    " +
-                formatPercent(item.percent);
+                formatPercent(
+                        item.percent
+                );
 
         TextView first =
                 new TextView(this);
 
         first.setText(line1);
         first.setTextSize(17);
+
         first.setTypeface(
                 Typeface.DEFAULT,
                 Typeface.BOLD
         );
 
         if (item.percent > 0) {
+
             first.setTextColor(
-                    Color.rgb(0, 130, 60)
+                    Color.rgb(
+                            0,
+                            130,
+                            60
+                    )
             );
+
         } else if (item.percent < 0) {
+
             first.setTextColor(
-                    Color.rgb(190, 30, 30)
+                    Color.rgb(
+                            190,
+                            30,
+                            30
+                    )
             );
+
         } else {
-            first.setTextColor(Color.DKGRAY);
+
+            first.setTextColor(
+                    Color.DKGRAY
+            );
         }
 
         box.addView(first);
@@ -941,13 +1371,19 @@ public class MainActivity extends Activity {
 
         second.setText(
                 "آخرین: " +
-                        formatNumber(item.last) +
+                        formatNumber(
+                                item.last
+                        ) +
                         "    پایانی: " +
-                        formatNumber(item.close)
+                        formatNumber(
+                                item.close
+                        )
         );
 
         second.setTextSize(14);
-        second.setTextColor(Color.DKGRAY);
+        second.setTextColor(
+                Color.DKGRAY
+        );
 
         box.addView(second);
 
@@ -956,28 +1392,33 @@ public class MainActivity extends Activity {
 
         third.setText(
                 "حجم: " +
-                        formatNumber(item.volume) +
+                        formatNumber(
+                                item.volume
+                        ) +
                         "    ارزش: " +
-                        formatNumber(item.value)
+                        formatNumber(
+                                item.value
+                        )
         );
 
         third.setTextSize(13);
-        third.setTextColor(Color.GRAY);
+        third.setTextColor(
+                Color.GRAY
+        );
 
         box.addView(third);
 
         content.addView(box);
     }
 
+    // =========================
+    // پول هوشمند
+    // =========================
+
     private void showSmartMoney() {
 
-        clearContent();
-
-        addText(
-                "پول هوشمند",
-                22,
-                Color.rgb(20, 70, 120),
-                true
+        openPage(
+                "پول هوشمند"
         );
 
         addText(
@@ -987,101 +1428,163 @@ public class MainActivity extends Activity {
                 false
         );
 
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
+        executor.execute(
+                new Runnable() {
+                    @Override
+                    public void run() {
 
-                try {
+                        try {
 
-                    String response =
-                            httpGet(MONEY_URL);
+                            String response =
+                                    httpGet(MONEY_URL);
 
-                    final List<MoneyItem> list =
-                            parseMoney(response);
+                            final List<MoneyItem> list =
+                                    parseMoney(response);
 
-                    Collections.sort(
-                            list,
-                            new Comparator<MoneyItem>() {
-                                @Override
-                                public int compare(
-                                        MoneyItem a,
-                                        MoneyItem b) {
+                            Collections.sort(
+                                    list,
+                                    new Comparator<MoneyItem>() {
+                                        @Override
+                                        public int compare(
+                                                MoneyItem a,
+                                                MoneyItem b) {
 
-                                    return Double.compare(
-                                            b.netValue,
-                                            a.netValue
-                                    );
-                                }
-                            }
-                    );
-
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-
-                            clearContent();
-
-                            addText(
-                                    "پول هوشمند",
-                                    22,
-                                    Color.rgb(20, 70, 120),
-                                    true
+                                            return Double.compare(
+                                                    b.netValue,
+                                                    a.netValue
+                                            );
+                                        }
+                                    }
                             );
 
-                            if (list.size() == 0) {
+                            handler.post(
+                                    new Runnable() {
+                                        @Override
+                                        public void run() {
 
-                                addText(
-                                        "داده پول حقیقی/حقوقی دریافت نشد.",
-                                        16,
-                                        Color.DKGRAY,
-                                        false
-                                );
+                                            /*
+                                             * دوباره صفحه را باز نمی‌کنیم
+                                             * چون دکمه برگشت باید باقی بماند.
+                                             */
 
-                                return;
-                            }
+                                            clearContent();
 
-                            int limit =
-                                    Math.min(30, list.size());
+                                            addBackButton();
 
-                            for (int i = 0;
-                                 i < limit;
-                                 i++) {
+                                            addText(
+                                                    "پول هوشمند",
+                                                    22,
+                                                    Color.rgb(
+                                                            20,
+                                                            70,
+                                                            120
+                                                    ),
+                                                    true
+                                            );
 
-                                MoneyItem item =
-                                        list.get(i);
+                                            if (list.size() == 0) {
 
-                                addMoneyRow(item);
-                            }
+                                                addText(
+                                                        "داده پول حقیقی/حقوقی دریافت نشد.",
+                                                        16,
+                                                        Color.DKGRAY,
+                                                        false
+                                                );
+
+                                                return;
+                                            }
+
+                                            int limit =
+                                                    Math.min(
+                                                            30,
+                                                            list.size()
+                                                    );
+
+                                            for (
+                                                    int i = 0;
+                                                    i < limit;
+                                                    i++) {
+
+                                                addMoneyRow(
+                                                        list.get(i)
+                                                );
+                                            }
+                                        }
+                                    }
+                            );
+
+                        } catch (
+                                final Exception e) {
+
+                            handler.post(
+                                    new Runnable() {
+                                        @Override
+                                        public void run() {
+
+                                            clearContent();
+
+                                            addBackButton();
+
+                                            addText(
+                                                    "خطا در دریافت پول هوشمند",
+                                                    21,
+                                                    Color.RED,
+                                                    true
+                                            );
+
+                                            addText(
+                                                    getReadableError(e),
+                                                    15,
+                                                    Color.DKGRAY,
+                                                    false
+                                            );
+                                        }
+                                    }
+                            );
                         }
-                    });
-
-                } catch (final Exception e) {
-
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-
-                            clearContent();
-
-                            addText(
-                                    "خطا در دریافت پول هوشمند",
-                                    21,
-                                    Color.RED,
-                                    true
-                            );
-
-                            addText(
-                                    getReadableError(e),
-                                    15,
-                                    Color.DKGRAY,
-                                    false
-                            );
-                        }
-                    });
+                    }
                 }
-            }
-        });
+        );
     }
+
+    // =========================
+    // دکمه برگشت
+    // =========================
+
+    private void addBackButton() {
+
+        Button back =
+                new Button(this);
+
+        back.setText(
+                "← بازگشت به منوی اصلی"
+        );
+
+        back.setTextSize(16);
+        back.setAllCaps(false);
+
+        back.setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+
+                        showHome();
+                    }
+                }
+        );
+
+        content.addView(
+                back,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+        );
+    }
+
+    // =========================
+    // پول حقیقی
+    // =========================
 
     private List<MoneyItem> parseMoney(
             String response) throws Exception {
@@ -1094,13 +1597,18 @@ public class MainActivity extends Activity {
 
         JSONArray array = null;
 
-        if (rootObject.has("clientTypeAllDto")) {
+        if (rootObject.has(
+                "clientTypeAllDto")) {
 
             Object value =
-                    rootObject.get("clientTypeAllDto");
+                    rootObject.get(
+                            "clientTypeAllDto"
+                    );
 
             if (value instanceof JSONArray) {
-                array = (JSONArray) value;
+
+                array =
+                        (JSONArray) value;
             }
         }
 
@@ -1187,7 +1695,9 @@ public class MainActivity extends Activity {
                     );
 
             if (market != null) {
-                item.symbol = market.symbol;
+
+                item.symbol =
+                        market.symbol;
             }
 
             if (item.symbol.length() > 0 ||
@@ -1203,9 +1713,12 @@ public class MainActivity extends Activity {
     private MarketItem findMarketItem(
             String insCode) {
 
-        for (MarketItem item : marketItems) {
+        for (MarketItem item :
+                marketItems) {
 
-            if (item.insCode.equals(insCode)) {
+            if (item.insCode.equals(
+                    insCode)) {
+
                 return item;
             }
         }
@@ -1227,24 +1740,38 @@ public class MainActivity extends Activity {
         String text =
                 symbol +
                 "\nخالص حجم حقیقی: " +
-                formatNumber(item.netVolume) +
+                formatNumber(
+                        item.netVolume
+                ) +
                 "\nخرید حقیقی: " +
-                formatNumber(item.buyIndividual) +
+                formatNumber(
+                        item.buyIndividual
+                ) +
                 "    فروش حقیقی: " +
-                formatNumber(item.sellIndividual);
+                formatNumber(
+                        item.sellIndividual
+                );
 
         if (item.buyValue != 0 ||
                 item.sellValue != 0) {
 
             text +=
                     "\nخالص ارزش: " +
-                    formatNumber(item.netValue);
+                    formatNumber(
+                            item.netValue
+                    );
         }
 
         tv.setText(text);
         tv.setTextSize(15);
         tv.setTextColor(Color.DKGRAY);
-        tv.setPadding(8, 10, 8, 10);
+
+        tv.setPadding(
+                8,
+                10,
+                8,
+                10
+        );
 
         if (item.netVolume > 0) {
 
@@ -1254,28 +1781,35 @@ public class MainActivity extends Activity {
             );
 
             tv.setTextColor(
-                    Color.rgb(0, 120, 60)
+                    Color.rgb(
+                            0,
+                            120,
+                            60
+                    )
             );
 
         } else if (item.netVolume < 0) {
 
             tv.setTextColor(
-                    Color.rgb(180, 30, 30)
+                    Color.rgb(
+                            180,
+                            30,
+                            30
+                    )
             );
         }
 
         content.addView(tv);
     }
 
+    // =========================
+    // ورود و خروج پول
+    // =========================
+
     private void showMoneyFlow() {
 
-        clearContent();
-
-        addText(
-                "ورود و خروج پول",
-                22,
-                Color.rgb(20, 70, 120),
-                true
+        openPage(
+                "ورود و خروج پول"
         );
 
         addText(
@@ -1285,118 +1819,158 @@ public class MainActivity extends Activity {
                 false
         );
 
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
+        executor.execute(
+                new Runnable() {
+                    @Override
+                    public void run() {
 
-                try {
+                        try {
 
-                    String response =
-                            httpGet(MONEY_URL);
+                            String response =
+                                    httpGet(MONEY_URL);
 
-                    List<MoneyItem> list =
-                            parseMoney(response);
+                            List<MoneyItem> list =
+                                    parseMoney(response);
 
-                    double buy = 0;
-                    double sell = 0;
-                    double net = 0;
+                            double buy = 0;
+                            double sell = 0;
+                            double net = 0;
 
-                    for (MoneyItem item : list) {
+                            for (
+                                    MoneyItem item :
+                                    list) {
 
-                        buy += item.buyIndividual;
-                        sell += item.sellIndividual;
-                        net += item.netVolume;
+                                buy +=
+                                        item.buyIndividual;
+
+                                sell +=
+                                        item.sellIndividual;
+
+                                net +=
+                                        item.netVolume;
+                            }
+
+                            final double totalBuy =
+                                    buy;
+
+                            final double totalSell =
+                                    sell;
+
+                            final double totalNet =
+                                    net;
+
+                            handler.post(
+                                    new Runnable() {
+                                        @Override
+                                        public void run() {
+
+                                            clearContent();
+
+                                            addBackButton();
+
+                                            addText(
+                                                    "ورود و خروج پول",
+                                                    22,
+                                                    Color.rgb(
+                                                            20,
+                                                            70,
+                                                            120
+                                                    ),
+                                                    true
+                                            );
+
+                                            addText(
+                                                    "خرید حقیقی: " +
+                                                            formatNumber(
+                                                                    totalBuy
+                                                            ),
+                                                    16,
+                                                    Color.DKGRAY,
+                                                    false
+                                            );
+
+                                            addText(
+                                                    "فروش حقیقی: " +
+                                                            formatNumber(
+                                                                    totalSell
+                                                            ),
+                                                    16,
+                                                    Color.DKGRAY,
+                                                    false
+                                            );
+
+                                            addText(
+                                                    "خالص جریان حجم: " +
+                                                            formatNumber(
+                                                                    totalNet
+                                                            ),
+                                                    18,
+                                                    totalNet >= 0
+                                                            ? Color.rgb(
+                                                                    0,
+                                                                    120,
+                                                                    60
+                                                            )
+                                                            : Color.rgb(
+                                                                    180,
+                                                                    30,
+                                                                    30
+                                                            ),
+                                                    true
+                                            );
+
+                                            addText(
+                                                    "توجه: این مقدار بر اساس حجم خرید و فروش حقیقی محاسبه شده است.",
+                                                    14,
+                                                    Color.GRAY,
+                                                    false
+                                            );
+                                        }
+                                    }
+                            );
+
+                        } catch (
+                                final Exception e) {
+
+                            handler.post(
+                                    new Runnable() {
+                                        @Override
+                                        public void run() {
+
+                                            clearContent();
+
+                                            addBackButton();
+
+                                            addText(
+                                                    "خطا در دریافت جریان پول",
+                                                    21,
+                                                    Color.RED,
+                                                    true
+                                            );
+
+                                            addText(
+                                                    getReadableError(e),
+                                                    15,
+                                                    Color.DKGRAY,
+                                                    false
+                                            );
+                                        }
+                                    }
+                            );
+                        }
                     }
-
-                    final double totalBuy = buy;
-                    final double totalSell = sell;
-                    final double totalNet = net;
-
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-
-                            clearContent();
-
-                            addText(
-                                    "ورود و خروج پول",
-                                    22,
-                                    Color.rgb(20, 70, 120),
-                                    true
-                            );
-
-                            addText(
-                                    "خرید حقیقی: " +
-                                            formatNumber(totalBuy),
-                                    16,
-                                    Color.DKGRAY,
-                                    false
-                            );
-
-                            addText(
-                                    "فروش حقیقی: " +
-                                            formatNumber(totalSell),
-                                    16,
-                                    Color.DKGRAY,
-                                    false
-                            );
-
-                            addText(
-                                    "خالص جریان حجم: " +
-                                            formatNumber(totalNet),
-                                    18,
-                                    totalNet >= 0
-                                            ? Color.rgb(0, 120, 60)
-                                            : Color.rgb(180, 30, 30),
-                                    true
-                            );
-
-                            addText(
-                                    "توجه: این مقدار بر اساس حجم خرید و فروش حقیقی محاسبه شده است.",
-                                    14,
-                                    Color.GRAY,
-                                    false
-                            );
-                        }
-                    });
-
-                } catch (final Exception e) {
-
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-
-                            clearContent();
-
-                            addText(
-                                    "خطا در دریافت جریان پول",
-                                    21,
-                                    Color.RED,
-                                    true
-                            );
-
-                            addText(
-                                    getReadableError(e),
-                                    15,
-                                    Color.DKGRAY,
-                                    false
-                            );
-                        }
-                    });
                 }
-            }
-        });
+        );
     }
+
+    // =========================
+    // بنیادی
+    // =========================
 
     private void showFundamental() {
 
-        clearContent();
-
-        addText(
-                "تحلیل بنیادی",
-                22,
-                Color.rgb(20, 70, 120),
-                true
+        openPage(
+                "تحلیل بنیادی"
         );
 
         addText(
@@ -1414,15 +1988,14 @@ public class MainActivity extends Activity {
         );
     }
 
+    // =========================
+    // تکنیکال
+    // =========================
+
     private void showTechnical() {
 
-        clearContent();
-
-        addText(
-                "تحلیل تکنیکال",
-                22,
-                Color.rgb(20, 70, 120),
-                true
+        openPage(
+                "تحلیل تکنیکال"
         );
 
         addText(
@@ -1440,23 +2013,26 @@ public class MainActivity extends Activity {
         );
     }
 
+    // =========================
+    // بررسی نمادها
+    // =========================
+
     private void showSymbols() {
 
-        clearContent();
-
-        addText(
-                "بررسی نمادها",
-                22,
-                Color.rgb(20, 70, 120),
-                true
+        openPage(
+                "بررسی نمادها"
         );
 
         final EditText input =
                 new EditText(this);
 
-        input.setHint("مثلاً خودرو");
+        input.setHint(
+                "مثلاً خودرو"
+        );
+
         input.setTextSize(16);
         input.setSingleLine(true);
+
         input.setInputType(
                 InputType.TYPE_CLASS_TEXT
         );
@@ -1472,7 +2048,10 @@ public class MainActivity extends Activity {
         Button search =
                 new Button(this);
 
-        search.setText("جستجوی نماد");
+        search.setText(
+                "جستجوی نماد"
+        );
+
         search.setAllCaps(false);
 
         content.addView(search);
@@ -1481,8 +2060,16 @@ public class MainActivity extends Activity {
                 new TextView(this);
 
         result.setTextSize(15);
-        result.setTextColor(Color.DKGRAY);
-        result.setPadding(5, 15, 5, 15);
+        result.setTextColor(
+                Color.DKGRAY
+        );
+
+        result.setPadding(
+                5,
+                15,
+                5,
+                15
+        );
 
         content.addView(result);
 
@@ -1541,7 +2128,10 @@ public class MainActivity extends Activity {
                                                     new Runnable() {
                                                         @Override
                                                         public void run() {
-                                                            result.setText(text);
+
+                                                            result.setText(
+                                                                    text
+                                                            );
                                                         }
                                                     }
                                             );
@@ -1555,7 +2145,9 @@ public class MainActivity extends Activity {
                                                         public void run() {
 
                                                             result.setText(
-                                                                    getReadableError(e)
+                                                                    getReadableError(
+                                                                            e
+                                                                    )
                                                             );
                                                         }
                                                     }
@@ -1569,6 +2161,10 @@ public class MainActivity extends Activity {
         );
     }
 
+    // =========================
+    // نتیجه جستجو
+    // =========================
+
     private String formatSearchResult(
             String response) throws Exception {
 
@@ -1577,13 +2173,18 @@ public class MainActivity extends Activity {
 
         JSONArray array = null;
 
-        if (rootObject.has("instrumentSearch")) {
+        if (rootObject.has(
+                "instrumentSearch")) {
 
             Object value =
-                    rootObject.get("instrumentSearch");
+                    rootObject.get(
+                            "instrumentSearch"
+                    );
 
             if (value instanceof JSONArray) {
-                array = (JSONArray) value;
+
+                array =
+                        (JSONArray) value;
             }
         }
 
@@ -1596,12 +2197,19 @@ public class MainActivity extends Activity {
         StringBuilder text =
                 new StringBuilder();
 
-        text.append("نتایج جستجو:\n\n");
+        text.append(
+                "نتایج جستجو:\n\n"
+        );
 
         int limit =
-                Math.min(10, array.length());
+                Math.min(
+                        10,
+                        array.length()
+                );
 
-        for (int i = 0; i < limit; i++) {
+        for (int i = 0;
+             i < limit;
+             i++) {
 
             JSONObject obj =
                     array.optJSONObject(i);
@@ -1638,9 +2246,7 @@ public class MainActivity extends Activity {
                             ""
                     );
 
-            text.append(
-                    symbol
-            );
+            text.append(symbol);
 
             if (name.length() > 0) {
 
@@ -1665,15 +2271,14 @@ public class MainActivity extends Activity {
         return text.toString();
     }
 
+    // =========================
+    // پیشنهادهای معاملاتی
+    // =========================
+
     private void showSuggestions() {
 
-        clearContent();
-
-        addText(
-                "پیشنهادهای معاملاتی",
-                22,
-                Color.rgb(20, 70, 120),
-                true
+        openPage(
+                "پیشنهادهای معاملاتی"
         );
 
         if (marketItems.size() == 0) {
@@ -1762,6 +2367,10 @@ public class MainActivity extends Activity {
         }
     }
 
+    // =========================
+    // ابزارهای JSON
+    // =========================
+
     private static String getString(
             JSONObject object,
             String key,
@@ -1840,6 +2449,10 @@ public class MainActivity extends Activity {
         return "";
     }
 
+    // =========================
+    // قالب اعداد
+    // =========================
+
     private static String formatNumber(
             double value) {
 
@@ -1849,21 +2462,25 @@ public class MainActivity extends Activity {
             return "0";
         }
 
-        if (Math.abs(value) >= 1000000000) {
+        if (Math.abs(value) >=
+                1000000000) {
 
             return String.format(
                     Locale.US,
                     "%.2f B",
-                    value / 1000000000.0
+                    value /
+                            1000000000.0
             );
         }
 
-        if (Math.abs(value) >= 1000000) {
+        if (Math.abs(value) >=
+                1000000) {
 
             return String.format(
                     Locale.US,
                     "%.2f M",
-                    value / 1000000.0
+                    value /
+                            1000000.0
             );
         }
 
@@ -1922,16 +2539,26 @@ public class MainActivity extends Activity {
         }
     }
 
+    // =========================
+    // پایان Activity
+    // =========================
+
     @Override
     protected void onDestroy() {
 
         super.onDestroy();
 
         try {
+
             executor.shutdownNow();
+
         } catch (Exception ignored) {
         }
     }
+
+    // =========================
+    // مدل بازار
+    // =========================
 
     private static class MarketItem {
 
@@ -1952,6 +2579,10 @@ public class MainActivity extends Activity {
 
         double percent = 0;
     }
+
+    // =========================
+    // مدل پول
+    // =========================
 
     private static class MoneyItem {
 
