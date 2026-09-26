@@ -18,6 +18,7 @@ import android.widget.TextView;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -59,27 +60,21 @@ public class MainActivity extends Activity {
     private static final String BASE_URL =
             "https://cdn.tsetmc.com/api/";
 
+    /*
+     * نسخه جدید دریافت اطلاعات بازار
+     */
     private static final String MARKET_URL =
             BASE_URL +
-            "ClosingPrice/GetMarketWatch" +
+            "ClosingPrice/GetMarketMap" +
             "?market=0" +
-            "&industrialGroup=" +
-            "&paperTypes[0]=1" +
-            "&paperTypes[1]=2" +
-            "&paperTypes[2]=3" +
-            "&paperTypes[3]=4" +
-            "&paperTypes[4]=5" +
-            "&paperTypes[5]=6" +
-            "&paperTypes[6]=7" +
-            "&paperTypes[7]=8" +
-            "&paperTypes[8]=9" +
-            "&showTraded=false" +
-            "&withBestLimits=false" +
-            "&hEven=0" +
-            "&RefID=0";
+            "&size=9999" +
+            "&sector=0" +
+            "&typeSelected=1" +
+            "&hEven=0";
 
     private static final String MONEY_URL =
-            BASE_URL + "ClientType/GetClientTypeAll";
+            BASE_URL +
+            "ClientType/GetClientTypeAll";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,6 +85,16 @@ public class MainActivity extends Activity {
         buildMainMenu();
 
         loadMarketData();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        try {
+            executor.shutdownNow();
+        } catch (Exception ignored) {
+        }
     }
 
     /*
@@ -118,7 +123,9 @@ public class MainActivity extends Activity {
                 new TextView(this);
 
         title.setText("بورس‌یار");
+
         title.setTextSize(25);
+
         title.setTextColor(
                 Color.rgb(20, 70, 120)
         );
@@ -269,8 +276,15 @@ public class MainActivity extends Activity {
         );
 
         info.setTextSize(16);
-        info.setTextColor(Color.DKGRAY);
-        info.setGravity(Gravity.CENTER);
+
+        info.setTextColor(
+                Color.DKGRAY
+        );
+
+        info.setGravity(
+                Gravity.CENTER
+        );
+
         info.setPadding(
                 10,
                 25,
@@ -294,8 +308,15 @@ public class MainActivity extends Activity {
         );
 
         status.setTextSize(14);
-        status.setTextColor(Color.DKGRAY);
-        status.setGravity(Gravity.CENTER);
+
+        status.setTextColor(
+                Color.DKGRAY
+        );
+
+        status.setGravity(
+                Gravity.CENTER
+        );
+
         status.setPadding(
                 10,
                 10,
@@ -316,7 +337,7 @@ public class MainActivity extends Activity {
 
     /*
      * ============================================================
-     * ساخت صفحه مستقل
+     * ساخت صفحه
      * ============================================================
      */
 
@@ -341,7 +362,9 @@ public class MainActivity extends Activity {
                 new TextView(this);
 
         title.setText(pageTitle);
+
         title.setTextSize(25);
+
         title.setTextColor(
                 Color.rgb(20, 70, 120)
         );
@@ -378,15 +401,14 @@ public class MainActivity extends Activity {
         );
 
         back.setTextSize(16);
+
         back.setAllCaps(false);
 
         back.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-
                         buildMainMenu();
-
                     }
                 }
         );
@@ -413,9 +435,17 @@ public class MainActivity extends Activity {
                 new TextView(this);
 
         status.setText("");
+
         status.setTextSize(14);
-        status.setTextColor(Color.DKGRAY);
-        status.setGravity(Gravity.CENTER);
+
+        status.setTextColor(
+                Color.DKGRAY
+        );
+
+        status.setGravity(
+                Gravity.CENTER
+        );
+
         status.setPadding(
                 10,
                 3,
@@ -475,7 +505,9 @@ public class MainActivity extends Activity {
                 new Button(this);
 
         button.setText(text);
+
         button.setTextSize(16);
+
         button.setAllCaps(false);
 
         button.setOnClickListener(
@@ -501,29 +533,6 @@ public class MainActivity extends Activity {
         );
     }
 
-    /*
-     * ============================================================
-     * وضعیت
-     * ============================================================
-     */
-
-    private void setStatus(
-            final String text) {
-
-        handler.post(
-                new Runnable() {
-                    @Override
-                    public void run() {
-
-                        if (status != null) {
-                            status.setText(text);
-                        }
-
-                    }
-                }
-        );
-    }
-
     private void clearContent() {
 
         if (content != null) {
@@ -541,7 +550,9 @@ public class MainActivity extends Activity {
                 new TextView(this);
 
         tv.setText(text);
+
         tv.setTextSize(size);
+
         tv.setTextColor(color);
 
         tv.setGravity(
@@ -570,7 +581,20 @@ public class MainActivity extends Activity {
         content.addView(tv);
     }
 
-    /*
+    private void setStatus(
+            final String text) {
+
+        handler.post(
+                new Runnable() {
+                    @Override
+                    public void run() {
+
+                        if (status != null) {
+                            status.setText(text);
+                        }
+                    }
+                }
+        );    /*
      * ============================================================
      * دریافت اطلاعات بازار
      * ============================================================
@@ -578,43 +602,12 @@ public class MainActivity extends Activity {
 
     private void loadMarketData() {
 
-        /*
-         * اگر از منوی اصلی اجرا شد،
-         * یک صفحه جدا برای دریافت اطلاعات باز می‌شود.
-         */
-
-        if (content == null ||
-                root == null ||
-                root.getChildCount() < 3) {
-
-            openPage(
-                    "دریافت اطلاعات بازار"
-            );
-        }
-
         setStatus(
                 "در حال دریافت اطلاعات بازار از TSETMC..."
         );
 
-        clearContent();
-
-        addText(
-                "دریافت اطلاعات بازار",
-                21,
-                Color.rgb(20, 70, 120),
-                true
-        );
-
-        addText(
-                "لطفاً چند ثانیه صبر کنید...",
-                15,
-                Color.DKGRAY,
-                false
-        );
-
         executor.execute(
                 new Runnable() {
-
                     @Override
                     public void run() {
 
@@ -631,13 +624,12 @@ public class MainActivity extends Activity {
                                 );
                             }
 
-                            parseMarketWatch(
+                            parseMarketMap(
                                     response
                             );
 
                             handler.post(
                                     new Runnable() {
-
                                         @Override
                                         public void run() {
 
@@ -645,43 +637,14 @@ public class MainActivity extends Activity {
 
                                                 setStatus(
                                                         "اتصال موفق؛ " +
-                                                                marketItems.size() +
-                                                                " نماد دریافت شد."
+                                                        marketItems.size() +
+                                                        " نماد دریافت شد."
                                                 );
-
-                                                showMarketOverview();
 
                                             } else {
 
                                                 setStatus(
-                                                        "اتصال برقرار شد ولی داده بازار خالی است."
-                                                );
-
-                                                clearContent();
-
-                                                addText(
-                                                        "اتصال به TSETMC برقرار شد",
-                                                        20,
-                                                        Color.rgb(
-                                                                20,
-                                                                100,
-                                                                50
-                                                        ),
-                                                        true
-                                                );
-
-                                                addText(
-                                                        "اما پاسخ دیده‌بان بازار خالی است.",
-                                                        16,
-                                                        Color.DKGRAY,
-                                                        false
-                                                );
-
-                                                addText(
-                                                        "ممکن است TSETMC در این لحظه داده کامل بازار را ارسال نکند.",
-                                                        15,
-                                                        Color.GRAY,
-                                                        false
+                                                        "پاسخ دریافت شد ولی نمادی پیدا نشد."
                                                 );
                                             }
                                         }
@@ -693,39 +656,12 @@ public class MainActivity extends Activity {
 
                             handler.post(
                                     new Runnable() {
-
                                         @Override
                                         public void run() {
 
                                             setStatus(
-                                                    "خطا در دریافت اطلاعات"
-                                            );
-
-                                            clearContent();
-
-                                            addText(
-                                                    "خطا در اتصال به TSETMC",
-                                                    21,
-                                                    Color.rgb(
-                                                            180,
-                                                            30,
-                                                            30
-                                                    ),
-                                                    true
-                                            );
-
-                                            addText(
-                                                    getReadableError(e),
-                                                    15,
-                                                    Color.DKGRAY,
-                                                    false
-                                            );
-
-                                            addText(
-                                                    "دوباره گزینه «به‌روزرسانی اطلاعات» را امتحان کنید.",
-                                                    15,
-                                                    Color.GRAY,
-                                                    false
+                                                    "خطا: " +
+                                                    getReadableError(e)
                                             );
                                         }
                                     }
@@ -734,6 +670,388 @@ public class MainActivity extends Activity {
                     }
                 }
         );
+    }
+
+    /*
+     * ============================================================
+     * تجزیه MarketMap
+     * ============================================================
+     */
+
+    private void parseMarketMap(
+            String response)
+            throws Exception {
+
+        marketItems.clear();
+
+        Object parsed =
+                new JSONTokener(
+                        response
+                ).nextValue();
+
+        JSONArray array = null;
+
+        if (parsed instanceof JSONArray) {
+
+            array =
+                    (JSONArray) parsed;
+
+        } else if (parsed instanceof JSONObject) {
+
+            JSONObject rootObject =
+                    (JSONObject) parsed;
+
+            String[] possibleKeys = {
+
+                    "marketMap",
+                    "marketmap",
+                    "marketMapDto",
+                    "data",
+                    "items",
+                    "marketwatch",
+                    "marketWatch"
+            };
+
+            for (String key :
+                    possibleKeys) {
+
+                Object value =
+                        rootObject.opt(key);
+
+                if (value instanceof JSONArray) {
+
+                    array =
+                            (JSONArray) value;
+
+                    break;
+                }
+            }
+        }
+
+        if (array == null) {
+
+            throw new Exception(
+                    "ساختار پاسخ بازار قابل شناسایی نیست."
+            );
+        }
+
+        for (int i = 0;
+             i < array.length();
+             i++) {
+
+            JSONObject obj =
+                    array.optJSONObject(i);
+
+            if (obj == null) {
+                continue;
+            }
+
+            MarketItem item =
+                    new MarketItem();
+
+            /*
+             * کد نماد
+             */
+            item.insCode =
+                    firstNonEmpty(
+
+                            getString(
+                                    obj,
+                                    "insCode",
+                                    ""
+                            ),
+
+                            getString(
+                                    obj,
+                                    "instrumentId",
+                                    ""
+                            )
+                    );
+
+            /*
+             * نام نماد
+             */
+            item.symbol =
+                    firstNonEmpty(
+
+                            getString(
+                                    obj,
+                                    "lVal18AFC",
+                                    ""
+                            ),
+
+                            getString(
+                                    obj,
+                                    "lVal18",
+                                    ""
+                            ),
+
+                            getString(
+                                    obj,
+                                    "symbol",
+                                    ""
+                            ),
+
+                            getString(
+                                    obj,
+                                    "symbolName",
+                                    ""
+                            ),
+
+                            getString(
+                                    obj,
+                                    "instrumentName",
+                                    ""
+                            )
+                    );
+
+            /*
+             * نام شرکت
+             */
+            item.name =
+                    firstNonEmpty(
+
+                            getString(
+                                    obj,
+                                    "lVal30",
+                                    ""
+                            ),
+
+                            getString(
+                                    obj,
+                                    "name",
+                                    ""
+                            ),
+
+                            getString(
+                                    obj,
+                                    "title",
+                                    ""
+                            ),
+
+                            getString(
+                                    obj,
+                                    "companyNamePersian",
+                                    ""
+                            )
+                    );
+
+            /*
+             * قیمت اولین معامله
+             */
+            item.first =
+                    getDouble(
+                            obj,
+                            "pf",
+                            getDouble(
+                                    obj,
+                                    "priceFirst",
+                                    0
+                            )
+                    );
+
+            /*
+             * قیمت پایانی
+             */
+            item.close =
+                    getDouble(
+                            obj,
+                            "pClosing",
+                            getDouble(
+                                    obj,
+                                    "pc",
+                                    getDouble(
+                                            obj,
+                                            "close",
+                                            getDouble(
+                                                    obj,
+                                                    "closingPrice",
+                                                    0
+                                            )
+                                    )
+                            )
+                    );
+
+            /*
+             * آخرین قیمت
+             */
+            item.last =
+                    getDouble(
+                            obj,
+                            "pDrCotVal",
+                            getDouble(
+                                    obj,
+                                    "pl",
+                                    getDouble(
+                                            obj,
+                                            "last",
+                                            getDouble(
+                                                    obj,
+                                                    "lastPrice",
+                                                    0
+                                            )
+                                    )
+                            )
+                    );
+
+            /*
+             * قیمت روز قبل
+             */
+            item.yesterday =
+                    getDouble(
+                            obj,
+                            "priceYesterday",
+                            getDouble(
+                                    obj,
+                                    "py",
+                                    getDouble(
+                                            obj,
+                                            "yesterday",
+                                            getDouble(
+                                                    obj,
+                                                    "yesterdayPrice",
+                                                    0
+                                            )
+                                    )
+                            )
+                    );
+
+            /*
+             * کمترین قیمت
+             */
+            item.min =
+                    getDouble(
+                            obj,
+                            "priceMin",
+                            getDouble(
+                                    obj,
+                                    "pmin",
+                                    0
+                            )
+                    );
+
+            /*
+             * بیشترین قیمت
+             */
+            item.max =
+                    getDouble(
+                            obj,
+                            "priceMax",
+                            getDouble(
+                                    obj,
+                                    "pmax",
+                                    0
+                            )
+                    );
+
+            /*
+             * حجم
+             */
+            item.volume =
+                    getDouble(
+                            obj,
+                            "qTotTran5J",
+                            getDouble(
+                                    obj,
+                                    "tvol",
+                                    getDouble(
+                                            obj,
+                                            "volume",
+                                            getDouble(
+                                                    obj,
+                                                    "tradeVolume",
+                                                    0
+                                            )
+                                    )
+                            )
+                    );
+
+            /*
+             * ارزش
+             */
+            item.value =
+                    getDouble(
+                            obj,
+                            "qTotCap",
+                            getDouble(
+                                    obj,
+                                    "tval",
+                                    getDouble(
+                                            obj,
+                                            "value",
+                                            getDouble(
+                                                    obj,
+                                                    "tradeValue",
+                                                    0
+                                            )
+                                    )
+                            )
+                    );
+
+            /*
+             * تعداد معاملات
+             */
+            item.trades =
+                    getDouble(
+                            obj,
+                            "zTotTran",
+                            getDouble(
+                                    obj,
+                                    "tno",
+                                    getDouble(
+                                            obj,
+                                            "trades",
+                                            getDouble(
+                                                    obj,
+                                                    "tradeCount",
+                                                    0
+                                            )
+                                    )
+                            )
+                    );
+
+            /*
+             * درصد تغییر
+             */
+            item.percent =
+                    getDouble(
+                            obj,
+                            "percent",
+                            getDouble(
+                                    obj,
+                                    "priceChangePercent",
+                                    0
+                            )
+                    );
+
+            /*
+             * اگر درصد وجود نداشت،
+             * خودمان محاسبه می‌کنیم.
+             */
+            if (item.percent == 0 &&
+                    item.yesterday != 0 &&
+                    item.close != 0) {
+
+                item.percent =
+                        (
+                                (
+                                        item.close -
+                                        item.yesterday
+                                )
+                                /
+                                item.yesterday
+                        )
+                        * 100.0;
+            }
+
+            /*
+             * فقط رکوردهای دارای نماد را قبول می‌کنیم.
+             */
+            if (item.symbol.length() > 0) {
+
+                marketItems.add(item);
+            }
+        }
     }
 
     /*
@@ -760,11 +1078,32 @@ public class MainActivity extends Activity {
         if (marketItems.size() == 0) {
 
             addText(
-                    "هنوز اطلاعات بازار دریافت نشده است.",
+                    "اطلاعات بازار هنوز دریافت نشده است.",
                     16,
                     Color.DKGRAY,
                     false
             );
+
+            Button refresh =
+                    new Button(this);
+
+            refresh.setText(
+                    "دریافت مجدد اطلاعات"
+            );
+
+            refresh.setAllCaps(false);
+
+            refresh.setOnClickListener(
+                    new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+
+                            loadMarketData();
+                        }
+                    }
+            );
+
+            content.addView(refresh);
 
             return;
         }
@@ -780,9 +1119,14 @@ public class MainActivity extends Activity {
         for (MarketItem item :
                 marketItems) {
 
-            totalVolume += item.volume;
-            totalValue += item.value;
-            totalTrades += item.trades;
+            totalVolume +=
+                    item.volume;
+
+            totalValue +=
+                    item.value;
+
+            totalTrades +=
+                    item.trades;
 
             if (item.percent > 0.001) {
 
@@ -800,7 +1144,7 @@ public class MainActivity extends Activity {
 
         addText(
                 "تعداد نمادهای دریافت‌شده: " +
-                        marketItems.size(),
+                marketItems.size(),
                 16,
                 Color.DKGRAY,
                 false
@@ -808,11 +1152,11 @@ public class MainActivity extends Activity {
 
         addText(
                 "مثبت: " +
-                        positive +
-                        "    منفی: " +
-                        negative +
-                        "    بدون تغییر: " +
-                        unchanged,
+                positive +
+                "    منفی: " +
+                negative +
+                "    بدون تغییر: " +
+                unchanged,
                 16,
                 Color.DKGRAY,
                 false
@@ -820,7 +1164,7 @@ public class MainActivity extends Activity {
 
         addText(
                 "حجم معاملات: " +
-                        formatNumber(totalVolume),
+                formatNumber(totalVolume),
                 15,
                 Color.DKGRAY,
                 false
@@ -828,7 +1172,7 @@ public class MainActivity extends Activity {
 
         addText(
                 "ارزش معاملات: " +
-                        formatNumber(totalValue),
+                formatNumber(totalValue),
                 15,
                 Color.DKGRAY,
                 false
@@ -836,23 +1180,59 @@ public class MainActivity extends Activity {
 
         addText(
                 "تعداد معاملات: " +
-                        formatNumber(totalTrades),
+                formatNumber(totalTrades),
                 15,
                 Color.DKGRAY,
                 false
         );
 
         addText(
-                "────── نمادها ──────",
-                16,
+                "──────────────",
+                15,
+                Color.GRAY,
+                false
+        );
+
+        addText(
+                "نمادهای بازار",
+                19,
                 Color.rgb(20, 70, 120),
                 true
         );
 
+        /*
+         * مرتب‌سازی بر اساس درصد تغییر
+         */
+        List<MarketItem> sorted =
+                new ArrayList<>(
+                        marketItems
+                );
+
+        Collections.sort(
+                sorted,
+                new Comparator<MarketItem>() {
+
+                    @Override
+                    public int compare(
+                            MarketItem a,
+                            MarketItem b) {
+
+                        return Double.compare(
+                                Math.abs(
+                                        b.percent
+                                ),
+                                Math.abs(
+                                        a.percent
+                                )
+                        );
+                    }
+                }
+        );
+
         int limit =
                 Math.min(
-                        30,
-                        marketItems.size()
+                        50,
+                        sorted.size()
                 );
 
         for (int i = 0;
@@ -860,7 +1240,7 @@ public class MainActivity extends Activity {
              i++) {
 
             addMarketRow(
-                    marketItems.get(i)
+                    sorted.get(i)
             );
         }
     }
@@ -895,17 +1275,22 @@ public class MainActivity extends Activity {
                         ? item.symbol
                         : "بدون نماد";
 
-        String line1 =
-                symbol +
-                        "    " +
-                        formatPercent(item.percent);
-
         TextView first =
                 new TextView(this);
 
-        first.setText(line1);
+        first.setText(
+                symbol +
+                "    " +
+                formatPercent(
+                        item.percent
+                )
+        );
+
         first.setTextSize(17);
-        first.setGravity(Gravity.RIGHT);
+
+        first.setGravity(
+                Gravity.RIGHT
+        );
 
         first.setTypeface(
                 Typeface.DEFAULT,
@@ -915,13 +1300,21 @@ public class MainActivity extends Activity {
         if (item.percent > 0) {
 
             first.setTextColor(
-                    Color.rgb(0, 130, 60)
+                    Color.rgb(
+                            0,
+                            130,
+                            60
+                    )
             );
 
         } else if (item.percent < 0) {
 
             first.setTextColor(
-                    Color.rgb(190, 30, 30)
+                    Color.rgb(
+                            190,
+                            30,
+                            30
+                    )
             );
 
         } else {
@@ -938,14 +1331,28 @@ public class MainActivity extends Activity {
 
         second.setText(
                 "آخرین: " +
-                        formatNumber(item.last) +
-                        "    پایانی: " +
-                        formatNumber(item.close)
+                formatNumber(
+                        item.last
+                ) +
+                "    پایانی: " +
+                formatNumber(
+                        item.close
+                ) +
+                "    روز قبل: " +
+                formatNumber(
+                        item.yesterday
+                )
         );
 
         second.setTextSize(14);
-        second.setGravity(Gravity.RIGHT);
-        second.setTextColor(Color.DKGRAY);
+
+        second.setGravity(
+                Gravity.RIGHT
+        );
+
+        second.setTextColor(
+                Color.DKGRAY
+        );
 
         box.addView(second);
 
@@ -954,21 +1361,34 @@ public class MainActivity extends Activity {
 
         third.setText(
                 "حجم: " +
-                        formatNumber(item.volume) +
-                        "    ارزش: " +
-                        formatNumber(item.value)
+                formatNumber(
+                        item.volume
+                ) +
+                "    ارزش: " +
+                formatNumber(
+                        item.value
+                ) +
+                "    معاملات: " +
+                formatNumber(
+                        item.trades
+                )
         );
 
         third.setTextSize(13);
-        third.setGravity(Gravity.RIGHT);
-        third.setTextColor(Color.GRAY);
+
+        third.setGravity(
+                Gravity.RIGHT
+        );
+
+        third.setTextColor(
+                Color.GRAY
+        );
 
         box.addView(third);
 
         content.addView(box);
     }
-
-    /*
+    }    /*
      * ============================================================
      * پول هوشمند
      * ============================================================
@@ -990,7 +1410,14 @@ public class MainActivity extends Activity {
         );
 
         addText(
-                "در حال دریافت اطلاعات حقیقی و حقوقی...",
+                "بر اساس خالص حجم خرید و فروش حقیقی",
+                14,
+                Color.GRAY,
+                false
+        );
+
+        addText(
+                "در حال دریافت اطلاعات...",
                 15,
                 Color.DKGRAY,
                 false
@@ -998,18 +1425,40 @@ public class MainActivity extends Activity {
 
         executor.execute(
                 new Runnable() {
-
                     @Override
                     public void run() {
 
                         try {
 
+                            /*
+                             * ابتدا باید اطلاعات بازار موجود باشد
+                             * تا InsCode به نام نماد تبدیل شود.
+                             */
+                            if (marketItems.size() == 0) {
+
+                                String marketResponse =
+                                        httpGet(
+                                                MARKET_URL
+                                        );
+
+                                parseMarketMap(
+                                        marketResponse
+                                );
+                            }
+
                             String response =
-                                    httpGet(MONEY_URL);
+                                    httpGet(
+                                            MONEY_URL
+                                    );
 
                             final List<MoneyItem> list =
-                                    parseMoney(response);
+                                    parseMoney(
+                                            response
+                                    );
 
+                            /*
+                             * مرتب‌سازی بر اساس خالص حجم حقیقی
+                             */
                             Collections.sort(
                                     list,
                                     new Comparator<MoneyItem>() {
@@ -1020,8 +1469,8 @@ public class MainActivity extends Activity {
                                                 MoneyItem b) {
 
                                             return Double.compare(
-                                                    b.netValue,
-                                                    a.netValue
+                                                    b.netVolume,
+                                                    a.netVolume
                                             );
                                         }
                                     }
@@ -1029,7 +1478,6 @@ public class MainActivity extends Activity {
 
                             handler.post(
                                     new Runnable() {
-
                                         @Override
                                         public void run() {
 
@@ -1046,10 +1494,17 @@ public class MainActivity extends Activity {
                                                     true
                                             );
 
+                                            addText(
+                                                    "مرتب‌شده بر اساس خالص حجم حقیقی",
+                                                    14,
+                                                    Color.GRAY,
+                                                    false
+                                            );
+
                                             if (list.size() == 0) {
 
                                                 addText(
-                                                        "داده پول حقیقی/حقوقی دریافت نشد.",
+                                                        "اطلاعات پول حقیقی دریافت نشد.",
                                                         16,
                                                         Color.DKGRAY,
                                                         false
@@ -1064,10 +1519,9 @@ public class MainActivity extends Activity {
                                                             list.size()
                                                     );
 
-                                            for (
-                                                    int i = 0;
-                                                    i < limit;
-                                                    i++) {
+                                            for (int i = 0;
+                                                 i < limit;
+                                                 i++) {
 
                                                 addMoneyRow(
                                                         list.get(i)
@@ -1082,7 +1536,6 @@ public class MainActivity extends Activity {
 
                             handler.post(
                                     new Runnable() {
-
                                         @Override
                                         public void run() {
 
@@ -1110,6 +1563,12 @@ public class MainActivity extends Activity {
         );
     }
 
+    /*
+     * ============================================================
+     * تجزیه ClientTypeAll
+     * ============================================================
+     */
+
     private List<MoneyItem> parseMoney(
             String response)
             throws Exception {
@@ -1117,28 +1576,29 @@ public class MainActivity extends Activity {
         List<MoneyItem> result =
                 new ArrayList<>();
 
+        if (response == null ||
+                response.trim().length() == 0) {
+
+            return result;
+        }
+
         JSONObject rootObject =
                 new JSONObject(response);
 
+        Object rootValue =
+                rootObject.opt(
+                        "clientTypeAllDto"
+                );
+
         JSONArray array = null;
 
-        if (rootObject.has(
-                "clientTypeAllDto")) {
+        if (rootValue instanceof JSONArray) {
 
-            Object value =
-                    rootObject.get(
-                            "clientTypeAllDto"
-                    );
-
-            if (value instanceof JSONArray) {
-
-                array =
-                        (JSONArray) value;
-            }
+            array =
+                    (JSONArray) rootValue;
         }
 
         if (array == null) {
-
             return result;
         }
 
@@ -1157,12 +1617,24 @@ public class MainActivity extends Activity {
                     new MoneyItem();
 
             item.insCode =
-                    getString(
-                            obj,
-                            "insCode",
-                            ""
+                    firstNonEmpty(
+
+                            getString(
+                                    obj,
+                                    "insCode",
+                                    ""
+                            ),
+
+                            getString(
+                                    obj,
+                                    "instrumentId",
+                                    ""
+                            )
                     );
 
+            /*
+             * خرید حقیقی
+             */
             item.buyIndividual =
                     getDouble(
                             obj,
@@ -1178,6 +1650,9 @@ public class MainActivity extends Activity {
                             )
                     );
 
+            /*
+             * فروش حقیقی
+             */
             item.sellIndividual =
                     getDouble(
                             obj,
@@ -1193,28 +1668,45 @@ public class MainActivity extends Activity {
                             )
                     );
 
+            /*
+             * ارزش خرید حقیقی
+             */
             item.buyValue =
                     getDouble(
                             obj,
                             "buy_I_Value",
-                            0
+                            getDouble(
+                                    obj,
+                                    "buyIValue",
+                                    0
+                            )
                     );
 
+            /*
+             * ارزش فروش حقیقی
+             */
             item.sellValue =
                     getDouble(
                             obj,
                             "sell_I_Value",
-                            0
+                            getDouble(
+                                    obj,
+                                    "sellIValue",
+                                    0
+                            )
                     );
-
-            item.netValue =
-                    item.buyValue -
-                            item.sellValue;
 
             item.netVolume =
                     item.buyIndividual -
-                            item.sellIndividual;
+                    item.sellIndividual;
 
+            item.netValue =
+                    item.buyValue -
+                    item.sellValue;
+
+            /*
+             * پیدا کردن نام نماد
+             */
             MarketItem market =
                     findMarketItem(
                             item.insCode
@@ -1226,6 +1718,9 @@ public class MainActivity extends Activity {
                         market.symbol;
             }
 
+            /*
+             * فقط اطلاعات واقعی را اضافه می‌کنیم.
+             */
             if (item.symbol.length() > 0 ||
                     Math.abs(
                             item.netVolume
@@ -1238,14 +1733,27 @@ public class MainActivity extends Activity {
         return result;
     }
 
+    /*
+     * ============================================================
+     * تطبیق InsCode با نماد
+     * ============================================================
+     */
+
     private MarketItem findMarketItem(
             String insCode) {
+
+        if (insCode == null ||
+                insCode.length() == 0) {
+
+            return null;
+        }
 
         for (MarketItem item :
                 marketItems) {
 
-            if (item.insCode.equals(
-                    insCode)) {
+            if (insCode.equals(
+                    item.insCode
+            )) {
 
                 return item;
             }
@@ -1254,51 +1762,90 @@ public class MainActivity extends Activity {
         return null;
     }
 
+    /*
+     * ============================================================
+     * نمایش هر ردیف پول هوشمند
+     * ============================================================
+     */
+
     private void addMoneyRow(
             MoneyItem item) {
-
-        TextView tv =
-                new TextView(this);
 
         String symbol =
                 item.symbol.length() > 0
                         ? item.symbol
-                        : item.insCode;
+                        : "نماد ناشناس";
 
-        String text =
-                symbol +
-                        "\nخالص حجم حقیقی: " +
-                        formatNumber(
-                                item.netVolume
-                        ) +
-                        "\nخرید حقیقی: " +
-                        formatNumber(
-                                item.buyIndividual
-                        ) +
-                        "    فروش حقیقی: " +
-                        formatNumber(
-                                item.sellIndividual
-                        );
+        TextView tv =
+                new TextView(this);
 
+        StringBuilder text =
+                new StringBuilder();
+
+        text.append(
+                symbol
+        );
+
+        text.append(
+                "\nخالص حجم حقیقی: "
+        );
+
+        text.append(
+                formatNumber(
+                        item.netVolume
+                )
+        );
+
+        text.append(
+                "\nخرید حقیقی: "
+        );
+
+        text.append(
+                formatNumber(
+                        item.buyIndividual
+                )
+        );
+
+        text.append(
+                "    فروش حقیقی: "
+        );
+
+        text.append(
+                formatNumber(
+                        item.sellIndividual
+                )
+        );
+
+        /*
+         * اگر ارزش حقیقی موجود باشد
+         * آن را هم نمایش می‌دهیم.
+         */
         if (item.buyValue != 0 ||
                 item.sellValue != 0) {
 
-            text +=
-                    "\nخالص ارزش: " +
-                            formatNumber(
-                                    item.netValue
-                            );
+            text.append(
+                    "\nخالص ارزش حقیقی: "
+            );
+
+            text.append(
+                    formatNumber(
+                            item.netValue
+                    )
+            );
         }
 
-        tv.setText(text);
-        tv.setTextSize(15);
-        tv.setGravity(Gravity.RIGHT);
-        tv.setLayoutDirection(
-                View.LAYOUT_DIRECTION_RTL
+        tv.setText(
+                text.toString()
         );
 
-        tv.setTextColor(
-                Color.DKGRAY
+        tv.setTextSize(15);
+
+        tv.setGravity(
+                Gravity.RIGHT
+        );
+
+        tv.setLayoutDirection(
+                View.LAYOUT_DIRECTION_RTL
         );
 
         tv.setPadding(
@@ -1310,17 +1857,17 @@ public class MainActivity extends Activity {
 
         if (item.netVolume > 0) {
 
-            tv.setTypeface(
-                    Typeface.DEFAULT,
-                    Typeface.BOLD
-            );
-
             tv.setTextColor(
                     Color.rgb(
                             0,
                             120,
                             60
                     )
+            );
+
+            tv.setTypeface(
+                    Typeface.DEFAULT,
+                    Typeface.BOLD
             );
 
         } else if (item.netVolume < 0) {
@@ -1331,6 +1878,12 @@ public class MainActivity extends Activity {
                             30,
                             30
                     )
+            );
+
+        } else {
+
+            tv.setTextColor(
+                    Color.DKGRAY
             );
         }
 
@@ -1359,7 +1912,7 @@ public class MainActivity extends Activity {
         );
 
         addText(
-                "در حال محاسبه جریان پول حقیقی...",
+                "در حال دریافت اطلاعات جریان پول...",
                 15,
                 Color.DKGRAY,
                 false
@@ -1367,24 +1920,25 @@ public class MainActivity extends Activity {
 
         executor.execute(
                 new Runnable() {
-
                     @Override
                     public void run() {
 
                         try {
 
                             String response =
-                                    httpGet(MONEY_URL);
+                                    httpGet(
+                                            MONEY_URL
+                                    );
 
-                            List<MoneyItem> list =
-                                    parseMoney(response);
+                            final List<MoneyItem> list =
+                                    parseMoney(
+                                            response
+                                    );
 
                             double buy = 0;
                             double sell = 0;
-                            double net = 0;
 
-                            for (
-                                    MoneyItem item :
+                            for (MoneyItem item :
                                     list) {
 
                                 buy +=
@@ -1392,9 +1946,6 @@ public class MainActivity extends Activity {
 
                                 sell +=
                                         item.sellIndividual;
-
-                                net +=
-                                        item.netVolume;
                             }
 
                             final double totalBuy =
@@ -1403,12 +1954,11 @@ public class MainActivity extends Activity {
                             final double totalSell =
                                     sell;
 
-                            final double totalNet =
-                                    net;
+                            final double net =
+                                    buy - sell;
 
                             handler.post(
                                     new Runnable() {
-
                                         @Override
                                         public void run() {
 
@@ -1427,37 +1977,25 @@ public class MainActivity extends Activity {
 
                                             addText(
                                                     "خرید حقیقی: " +
-                                                            formatNumber(
-                                                                    totalBuy
-                                                            ),
-                                                    16,
-                                                    Color.DKGRAY,
-                                                    false
+                                                    formatNumber(
+                                                            totalBuy
+                                                    ),
+                                                    17,
+                                                    Color.rgb(
+                                                            0,
+                                                            120,
+                                                            60
+                                                    ),
+                                                    true
                                             );
 
                                             addText(
                                                     "فروش حقیقی: " +
-                                                            formatNumber(
-                                                                    totalSell
-                                                            ),
-                                                    16,
-                                                    Color.DKGRAY,
-                                                    false
-                                            );
-
-                                            addText(
-                                                    "خالص جریان حجم: " +
-                                                            formatNumber(
-                                                                    totalNet
-                                                            ),
-                                                    18,
-                                                    totalNet >= 0
-                                                            ? Color.rgb(
-                                                            0,
-                                                            120,
-                                                            60
-                                                    )
-                                                            : Color.rgb(
+                                                    formatNumber(
+                                                            totalSell
+                                                    ),
+                                                    17,
+                                                    Color.rgb(
                                                             180,
                                                             30,
                                                             30
@@ -1466,7 +2004,35 @@ public class MainActivity extends Activity {
                                             );
 
                                             addText(
-                                                    "توجه: این مقدار بر اساس حجم خرید و فروش حقیقی محاسبه شده است.",
+                                                    "خالص جریان حجم: " +
+                                                    formatNumber(
+                                                            net
+                                                    ),
+                                                    18,
+                                                    net >= 0
+                                                            ? Color.rgb(
+                                                                    0,
+                                                                    120,
+                                                                    60
+                                                            )
+                                                            : Color.rgb(
+                                                                    180,
+                                                                    30,
+                                                                    30
+                                                            ),
+                                                    true
+                                            );
+
+                                            addText(
+                                                    "تعداد نمادهای دارای داده: " +
+                                                    list.size(),
+                                                    15,
+                                                    Color.DKGRAY,
+                                                    false
+                                            );
+
+                                            addText(
+                                                    "مبنای محاسبه: حجم خرید و فروش حقیقی",
                                                     14,
                                                     Color.GRAY,
                                                     false
@@ -1480,7 +2046,6 @@ public class MainActivity extends Activity {
 
                             handler.post(
                                     new Runnable() {
-
                                         @Override
                                         public void run() {
 
@@ -1505,78 +2070,6 @@ public class MainActivity extends Activity {
                         }
                     }
                 }
-        );
-    }
-
-    /*
-     * ============================================================
-     * تحلیل بنیادی
-     * ============================================================
-     */
-
-    private void showFundamental() {
-
-        openPage(
-                "تحلیل بنیادی"
-        );
-
-        clearContent();
-
-        addText(
-                "تحلیل بنیادی",
-                22,
-                Color.rgb(20, 70, 120),
-                true
-        );
-
-        addText(
-                "این بخش در حال آماده‌سازی است.",
-                17,
-                Color.DKGRAY,
-                false
-        );
-
-        addText(
-                "در مرحله بعد EPS، P/E، فروش، سود و اطلاعات کدال به آن اضافه می‌شود.",
-                15,
-                Color.GRAY,
-                false
-        );
-    }
-
-    /*
-     * ============================================================
-     * تحلیل تکنیکال
-     * ============================================================
-     */
-
-    private void showTechnical() {
-
-        openPage(
-                "تحلیل تکنیکال"
-        );
-
-        clearContent();
-
-        addText(
-                "تحلیل تکنیکال",
-                22,
-                Color.rgb(20, 70, 120),
-                true
-        );
-
-        addText(
-                "برای تحلیل تکنیکال ابتدا نماد مورد نظر را جستجو کنید.",
-                16,
-                Color.DKGRAY,
-                false
-        );
-
-        addText(
-                "در نسخه بعدی RSI، MACD، میانگین متحرک و روند قیمت اضافه می‌شود.",
-                15,
-                Color.GRAY,
-                false
         );
     }
 
@@ -1609,6 +2102,7 @@ public class MainActivity extends Activity {
         );
 
         input.setTextSize(16);
+
         input.setSingleLine(true);
 
         input.setGravity(
@@ -1636,20 +2130,23 @@ public class MainActivity extends Activity {
 
         search.setAllCaps(false);
 
-        content.addView(
-                search
-        );
+        content.addView(search);
 
         final TextView result =
                 new TextView(this);
 
         result.setTextSize(15);
+
         result.setTextColor(
                 Color.DKGRAY
         );
 
         result.setGravity(
                 Gravity.RIGHT
+        );
+
+        result.setLayoutDirection(
+                View.LAYOUT_DIRECTION_RTL
         );
 
         result.setPadding(
@@ -1659,9 +2156,7 @@ public class MainActivity extends Activity {
                 15
         );
 
-        content.addView(
-                result
-        );
+        content.addView(result);
 
         search.setOnClickListener(
                 new View.OnClickListener() {
@@ -1683,186 +2178,97 @@ public class MainActivity extends Activity {
                             return;
                         }
 
-                        hideKeyboard(input);
+                        hideKeyboard(
+                                input
+                        );
 
                         result.setText(
                                 "در حال جستجو..."
                         );
 
-                        executor.execute(
-                                new Runnable() {
+                        /*
+                         * جستجو ابتدا در داده‌های دریافت‌شده بازار
+                         * انجام می‌شود تا درخواست اضافی کم شود.
+                         */
+                        boolean found = false;
 
-                                    @Override
-                                    public void run() {
+                        StringBuilder local =
+                                new StringBuilder();
 
-                                        try {
+                        for (MarketItem item :
+                                marketItems) {
 
-                                            String encoded =
-                                                    URLEncoder.encode(
-                                                            symbol,
-                                                            "UTF-8"
-                                                    );
+                            if (item.symbol
+                                    .contains(symbol)) {
 
-                                            String url =
-                                                    BASE_URL +
-                                                            "Instrument/GetInstrumentSearch/" +
-                                                            encoded;
+                                found = true;
 
-                                            String response =
-                                                    httpGet(url);
+                                local.append(
+                                        item.symbol
+                                );
 
-                                            final String text =
-                                                    formatSearchResult(
-                                                            response
-                                                    );
+                                local.append(
+                                        "\nآخرین: "
+                                );
 
-                                            handler.post(
-                                                    new Runnable() {
+                                local.append(
+                                        formatNumber(
+                                                item.last
+                                        )
+                                );
 
-                                                        @Override
-                                                        public void run() {
+                                local.append(
+                                        "\nپایانی: "
+                                );
 
-                                                            result.setText(
-                                                                    text
-                                                            );
-                                                        }
-                                                    }
-                                            );
+                                local.append(
+                                        formatNumber(
+                                                item.close
+                                        )
+                                );
 
-                                        } catch (
-                                                final Exception e) {
+                                local.append(
+                                        "\nدرصد: "
+                                );
 
-                                            handler.post(
-                                                    new Runnable() {
+                                local.append(
+                                        formatPercent(
+                                                item.percent
+                                        )
+                                );
 
-                                                        @Override
-                                                        public void run() {
+                                local.append(
+                                        "\nحجم: "
+                                );
 
-                                                            result.setText(
-                                                                    getReadableError(
-                                                                            e
-                                                                    )
-                                                            );
-                                                        }
-                                                    }
-                                            );
-                                        }
-                                    }
-                                }
-                        );
+                                local.append(
+                                        formatNumber(
+                                                item.volume
+                                        )
+                                );
+
+                                local.append(
+                                        "\n\n"
+                                );
+                            }
+                        }
+
+                        if (found) {
+
+                            result.setText(
+                                    local.toString()
+                            );
+
+                        } else {
+
+                            result.setText(
+                                    "نماد مورد نظر در اطلاعات فعلی بازار پیدا نشد."
+                            );
+                        }
                     }
                 }
         );
-    }
-
-    private String formatSearchResult(
-            String response)
-            throws Exception {
-
-        JSONObject rootObject =
-                new JSONObject(response);
-
-        JSONArray array = null;
-
-        if (rootObject.has(
-                "instrumentSearch")) {
-
-            Object value =
-                    rootObject.get(
-                            "instrumentSearch"
-                    );
-
-            if (value instanceof JSONArray) {
-
-                array =
-                        (JSONArray) value;
-            }
-        }
-
-        if (array == null ||
-                array.length() == 0) {
-
-            return "نمادی پیدا نشد.";
-        }
-
-        StringBuilder text =
-                new StringBuilder();
-
-        text.append(
-                "نتایج جستجو:\n\n"
-        );
-
-        int limit =
-                Math.min(
-                        10,
-                        array.length()
-                );
-
-        for (int i = 0;
-             i < limit;
-             i++) {
-
-            JSONObject obj =
-                    array.optJSONObject(i);
-
-            if (obj == null) {
-                continue;
-            }
-
-            String code =
-                    getString(
-                            obj,
-                            "insCode",
-                            ""
-                    );
-
-            String symbol =
-                    firstNonEmpty(
-                            getString(
-                                    obj,
-                                    "lVal18AFC",
-                                    ""
-                            ),
-                            getString(
-                                    obj,
-                                    "lVal18",
-                                    ""
-                            )
-                    );
-
-            String name =
-                    getString(
-                            obj,
-                            "lVal30",
-                            ""
-                    );
-
-            text.append(symbol);
-
-            if (name.length() > 0) {
-
-                text.append(
-                        " - "
-                );
-
-                text.append(name);
-            }
-
-            text.append(
-                    "\nکد: "
-            );
-
-            text.append(code);
-
-            text.append(
-                    "\n\n"
-            );
-        }
-
-        return text.toString();
-    }
-
-    /*
+    }    /*
      * ============================================================
      * پیشنهادهای معاملاتی
      * ============================================================
@@ -1870,9 +2276,7 @@ public class MainActivity extends Activity {
 
     private void showSuggestions() {
 
-        openPage(
-                "پیشنهادهای معاملاتی"
-        );
+        openPage("پیشنهادهای معاملاتی");
 
         clearContent();
 
@@ -1883,10 +2287,17 @@ public class MainActivity extends Activity {
                 true
         );
 
+        addText(
+                "این بخش فقط فیلتر و محاسبه اطلاعات بازار است؛ تصمیم خرید و فروش با کاربر است.",
+                14,
+                Color.GRAY,
+                false
+        );
+
         if (marketItems.size() == 0) {
 
             addText(
-                    "ابتدا اطلاعات بازار را دریافت کنید.",
+                    "ابتدا اطلاعات بازار را به‌روزرسانی کنید.",
                     16,
                     Color.DKGRAY,
                     false
@@ -1895,25 +2306,26 @@ public class MainActivity extends Activity {
             return;
         }
 
-        List<MarketItem> candidates =
+        ArrayList<MarketItem> candidates =
                 new ArrayList<>();
 
-        for (MarketItem item :
-                marketItems) {
+        for (MarketItem item : marketItems) {
 
-            if (item.yesterday <= 0) {
+            if (item.symbol == null ||
+                    item.symbol.length() == 0) {
                 continue;
             }
 
-            if (item.volume <= 0) {
-                continue;
-            }
-
-            if (item.value <= 0) {
-                continue;
-            }
-
-            if (item.percent > 0) {
+            /*
+             * فیلتر اولیه:
+             * حجم > صفر
+             * قیمت معتبر
+             * درصد مثبت
+             */
+            if (item.volume > 0 &&
+                    item.last > 0 &&
+                    item.yesterday > 0 &&
+                    item.percent > 0) {
 
                 candidates.add(item);
             }
@@ -1936,17 +2348,10 @@ public class MainActivity extends Activity {
                 }
         );
 
-        addText(
-                "این فهرست صرفاً غربال اولیه بازار است و توصیه خرید یا فروش نیست.",
-                14,
-                Color.GRAY,
-                false
-        );
-
         if (candidates.size() == 0) {
 
             addText(
-                    "در حال حاضر نماد مناسب بر اساس این فیلتر پیدا نشد.",
+                    "در اطلاعات فعلی بازار موردی مطابق فیلتر پیدا نشد.",
                     16,
                     Color.DKGRAY,
                     false
@@ -1965,58 +2370,270 @@ public class MainActivity extends Activity {
              i < limit;
              i++) {
 
-            addMarketRow(
-                    candidates.get(i)
+            MarketItem item =
+                    candidates.get(i);
+
+            addMarketRow(item);
+        }
+    }
+
+
+    /*
+     * ============================================================
+     * تحلیل بنیادی
+     * ============================================================
+     */
+
+    private void showFundamental() {
+
+        openPage("تحلیل بنیادی");
+
+        clearContent();
+
+        addText(
+                "تحلیل بنیادی",
+                22,
+                Color.rgb(20, 70, 120),
+                true
+        );
+
+        addText(
+                "اطلاعات بنیادی کامل نیازمند داده‌های کدال و صورت‌های مالی است.",
+                15,
+                Color.DKGRAY,
+                false
+        );
+
+        addText(
+                "در این نسخه، اطلاعات بازار TSETMC نمایش داده می‌شود و از ساختن داده بنیادی جعلی خودداری شده است.",
+                15,
+                Color.GRAY,
+                false
+        );
+
+        if (marketItems.size() == 0) {
+
+            addText(
+                    "هنوز اطلاعات بازار دریافت نشده است.",
+                    16,
+                    Color.DKGRAY,
+                    false
+            );
+
+            return;
+        }
+
+        addText(
+                "نمونه اطلاعات قابل استفاده:",
+                18,
+                Color.rgb(20, 70, 120),
+                true
+        );
+
+        int limit =
+                Math.min(
+                        20,
+                        marketItems.size()
+                );
+
+        for (int i = 0;
+             i < limit;
+             i++) {
+
+            MarketItem item =
+                    marketItems.get(i);
+
+            if (item.symbol == null ||
+                    item.symbol.length() == 0) {
+                continue;
+            }
+
+            String text =
+                    item.symbol +
+                    "\nآخرین قیمت: " +
+                    formatNumber(item.last) +
+                    "\nقیمت پایانی: " +
+                    formatNumber(item.close) +
+                    "\nحجم معاملات: " +
+                    formatNumber(item.volume) +
+                    "\nارزش معاملات: " +
+                    formatNumber(item.value);
+
+            addText(
+                    text,
+                    15,
+                    Color.DKGRAY,
+                    false
             );
         }
     }
 
+
     /*
      * ============================================================
-     * اتصال TSETMC
+     * تحلیل تکنیکال
+     * ============================================================
+     */
+
+    private void showTechnical() {
+
+        openPage("تحلیل تکنیکال");
+
+        clearContent();
+
+        addText(
+                "تحلیل تکنیکال",
+                22,
+                Color.rgb(20, 70, 120),
+                true
+        );
+
+        addText(
+                "تحلیل اولیه بر اساس قیمت و درصد تغییرات بازار",
+                15,
+                Color.GRAY,
+                false
+        );
+
+        if (marketItems.size() == 0) {
+
+            addText(
+                    "ابتدا اطلاعات بازار را به‌روزرسانی کنید.",
+                    16,
+                    Color.DKGRAY,
+                    false
+            );
+
+            return;
+        }
+
+        ArrayList<MarketItem> list =
+                new ArrayList<>();
+
+        for (MarketItem item :
+                marketItems) {
+
+            if (item.symbol != null &&
+                    item.symbol.length() > 0 &&
+                    item.last > 0 &&
+                    item.yesterday > 0) {
+
+                list.add(item);
+            }
+        }
+
+        Collections.sort(
+                list,
+                new Comparator<MarketItem>() {
+
+                    @Override
+                    public int compare(
+                            MarketItem a,
+                            MarketItem b) {
+
+                        return Double.compare(
+                                Math.abs(b.percent),
+                                Math.abs(a.percent)
+                        );
+                    }
+                }
+        );
+
+        int limit =
+                Math.min(
+                        20,
+                        list.size()
+                );
+
+        for (int i = 0;
+             i < limit;
+             i++) {
+
+            MarketItem item =
+                    list.get(i);
+
+            String signal;
+
+            if (item.percent > 0) {
+
+                signal =
+                        "مثبت";
+
+            } else if (item.percent < 0) {
+
+                signal =
+                        "منفی";
+
+            } else {
+
+                signal =
+                        "بدون تغییر";
+            }
+
+            String text =
+                    item.symbol +
+                    "\nوضعیت: " +
+                    signal +
+                    "\nدرصد تغییر: " +
+                    formatPercent(item.percent) +
+                    "\nآخرین: " +
+                    formatNumber(item.last) +
+                    "\nپایانی: " +
+                    formatNumber(item.close) +
+                    "\nحجم: " +
+                    formatNumber(item.volume);
+
+            addText(
+                    text,
+                    15,
+                    item.percent >= 0
+                            ? Color.rgb(
+                                    0,
+                                    120,
+                                    60
+                            )
+                            : Color.rgb(
+                                    180,
+                                    30,
+                                    30
+                            ),
+                    false
+            );
+        }
+    }
+
+
+    /*
+     * ============================================================
+     * اطمینان از وجود اطلاعات بازار
+     * ============================================================
+     */
+
+    private boolean ensureMarketLoaded() {
+
+        return marketItems != null &&
+                marketItems.size() > 0;
+    }
+
+
+    /*
+     * ============================================================
+     * ارتباط اینترنتی
      * ============================================================
      */
 
     private String httpGet(
-            String address)
+            String urlString)
             throws Exception {
 
+        setupTsetmcSsl();
+
         URL url =
-                new URL(address);
+                new URL(urlString);
 
         HttpURLConnection connection =
                 (HttpURLConnection)
                         url.openConnection();
-
-        if (connection instanceof
-                HttpsURLConnection) {
-
-            HttpsURLConnection https =
-                    (HttpsURLConnection)
-                            connection;
-
-            https.setSSLSocketFactory(
-                    getUnsafeSslContext()
-                            .getSocketFactory()
-            );
-
-            https.setHostnameVerifier(
-                    new HostnameVerifier() {
-
-                        @Override
-                        public boolean verify(
-                                String hostname,
-                                SSLSession session) {
-
-                            return
-                                    "cdn.tsetmc.com"
-                                            .equalsIgnoreCase(
-                                                    hostname
-                                            );
-                        }
-                    }
-            );
-        }
 
         connection.setRequestMethod(
                 "GET"
@@ -2040,10 +2657,7 @@ public class MainActivity extends Activity {
 
         connection.setRequestProperty(
                 "User-Agent",
-                "Mozilla/5.0 (Linux; Android 13) " +
-                        "AppleWebKit/537.36 " +
-                        "(KHTML, like Gecko) " +
-                        "Chrome/120.0 Mobile Safari/537.36"
+                "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36"
         );
 
         connection.setRequestProperty(
@@ -2053,22 +2667,7 @@ public class MainActivity extends Activity {
 
         connection.setRequestProperty(
                 "Accept-Language",
-                "fa-IR,fa;q=0.9,en-US;q=0.8,en;q=0.7"
-        );
-
-        connection.setRequestProperty(
-                "Cache-Control",
-                "no-cache"
-        );
-
-        connection.setRequestProperty(
-                "Pragma",
-                "no-cache"
-        );
-
-        connection.setRequestProperty(
-                "Origin",
-                "https://tsetmc.com"
+                "fa-IR,fa;q=0.9,en-US;q=0.8"
         );
 
         connection.setRequestProperty(
@@ -2079,26 +2678,50 @@ public class MainActivity extends Activity {
         int code =
                 connection.getResponseCode();
 
-        InputStream input;
+        InputStream stream;
 
         if (code >= 200 &&
-                code < 300) {
+                code < 400) {
 
-            input =
+            stream =
                     connection.getInputStream();
 
         } else {
 
-            input =
+            stream =
                     connection.getErrorStream();
 
-            if (input == null) {
+            String error =
+                    stream == null
+                            ? ""
+                            : readStream(stream);
 
-                throw new Exception(
-                        "HTTP " + code
-                );
-            }
+            throw new IOException(
+                    "HTTP " +
+                    code +
+                    " " +
+                    error
+            );
         }
+
+        String result =
+                readStream(stream);
+
+        connection.disconnect();
+
+        return result;
+    }
+
+
+    /*
+     * ============================================================
+     * خواندن Stream
+     * ============================================================
+     */
+
+    private String readStream(
+            InputStream input)
+            throws Exception {
 
         BufferedReader reader =
                 new BufferedReader(
@@ -2108,406 +2731,103 @@ public class MainActivity extends Activity {
                         )
                 );
 
-        StringBuilder result =
+        StringBuilder builder =
                 new StringBuilder();
 
         String line;
 
-        while (
-                (line =
-                        reader.readLine()) != null) {
+        while ((line =
+                reader.readLine()) != null) {
 
-            result.append(line);
+            builder.append(line);
         }
 
         reader.close();
 
-        connection.disconnect();
-
-        if (code < 200 ||
-                code >= 300) {
-
-            throw new Exception(
-                    "HTTP " +
-                            code +
-                            "\n" +
-                            result.toString()
-            );
-        }
-
-        return result.toString();
+        return builder.toString();
     }
+
 
     /*
      * ============================================================
-     * SSL
+     * SSL مخصوص TSETMC
      * ============================================================
      */
-
-    private SSLContext getUnsafeSslContext()
-            throws Exception {
-
-        TrustManager[] trustAll =
-                new TrustManager[]{
-
-                        new X509TrustManager() {
-
-                            @Override
-                            public void checkClientTrusted(
-                                    X509Certificate[] chain,
-                                    String authType) {
-                            }
-
-                            @Override
-                            public void checkServerTrusted(
-                                    X509Certificate[] chain,
-                                    String authType) {
-                            }
-
-                            @Override
-                            public X509Certificate[]
-                            getAcceptedIssuers() {
-
-                                return
-                                        new X509Certificate[0];
-                            }
-                        }
-                };
-
-        SSLContext context =
-                SSLContext.getInstance(
-                        "TLS"
-                );
-
-        context.init(
-                null,
-                trustAll,
-                new java.security.SecureRandom()
-        );
-
-        return context;
-    }
 
     private void setupTsetmcSsl() {
 
         try {
 
-            SSLContext context =
-                    getUnsafeSslContext();
-
-            HttpsURLConnection
-                    .setDefaultSSLSocketFactory(
-                            context.getSocketFactory()
+            final SSLContext context =
+                    SSLContext.getInstance(
+                            "TLS"
                     );
 
-            HttpsURLConnection
-                    .setDefaultHostnameVerifier(
-                            new HostnameVerifier() {
+            context.init(
+                    null,
+                    new TrustManager[]{
+                            new X509TrustManager() {
 
                                 @Override
-                                public boolean verify(
-                                        String hostname,
-                                        SSLSession session) {
+                                public X509Certificate[] getAcceptedIssuers() {
+                                    return new X509Certificate[0];
+                                }
 
-                                    return
-                                            "cdn.tsetmc.com"
-                                                    .equalsIgnoreCase(
-                                                            hostname
-                                                    );
+                                @Override
+                                public void checkClientTrusted(
+                                        X509Certificate[] chain,
+                                        String authType) {
+                                }
+
+                                @Override
+                                public void checkServerTrusted(
+                                        X509Certificate[] chain,
+                                        String authType) {
                                 }
                             }
-                    );
+                    },
+                    new SecureRandom()
+            );
+
+            HttpsURLConnection.setDefaultSSLSocketFactory(
+                    context.getSocketFactory()
+            );
+
+            HttpsURLConnection.setDefaultHostnameVerifier(
+                    new HostnameVerifier() {
+
+                        @Override
+                        public boolean verify(
+                                String hostname,
+                                SSLSession session) {
+
+                            return hostname.equals(
+                                    "cdn.tsetmc.com"
+                            );
+                        }
+                    }
+            );
 
         } catch (Exception ignored) {
         }
     }
 
-    /*
-     * ============================================================
-     * پردازش Market Watch
-     * ============================================================
-     */
-
-    private void parseMarketWatch(
-            String response)
-            throws Exception {
-
-        marketItems.clear();
-
-        JSONObject rootObject =
-                new JSONObject(response);
-
-        JSONArray array = null;
-
-        String[] keys = {
-                "marketwatch",
-                "marketWatch",
-                "marketWatchDto"
-        };
-
-        for (String key :
-                keys) {
-
-            if (rootObject.has(key)) {
-
-                Object value =
-                        rootObject.get(key);
-
-                if (value instanceof JSONArray) {
-
-                    array =
-                            (JSONArray) value;
-
-                    break;
-                }
-            }
-        }
-
-        if (array == null) {
-
-            if (rootObject.length() == 0) {
-                return;
-            }
-
-            return;
-        }
-
-        for (int i = 0;
-             i < array.length();
-             i++) {
-
-            JSONObject obj =
-                    array.optJSONObject(i);
-
-            if (obj == null) {
-                continue;
-            }
-
-            MarketItem item =
-                    new MarketItem();
-
-            item.insCode =
-                    getString(
-                            obj,
-                            "insCode",
-                            ""
-                    );
-
-            item.symbol =
-                    firstNonEmpty(
-                            getString(
-                                    obj,
-                                    "lVal18AFC",
-                                    ""
-                            ),
-                            getString(
-                                    obj,
-                                    "lVal18",
-                                    ""
-                            ),
-                            getString(
-                                    obj,
-                                    "symbol",
-                                    ""
-                            ),
-                            getString(
-                                    obj,
-                                    "symbolName",
-                                    ""
-                            )
-                    );
-
-            item.name =
-                    firstNonEmpty(
-                            getString(
-                                    obj,
-                                    "lVal30",
-                                    ""
-                            ),
-                            getString(
-                                    obj,
-                                    "name",
-                                    ""
-                            ),
-                            getString(
-                                    obj,
-                                    "title",
-                                    ""
-                            )
-                    );
-
-            item.last =
-                    getDouble(
-                            obj,
-                            "pDrCotVal",
-                            getDouble(
-                                    obj,
-                                    "pl",
-                                    getDouble(
-                                            obj,
-                                            "last",
-                                            0
-                                    )
-                            )
-                    );
-
-            item.close =
-                    getDouble(
-                            obj,
-                            "pClosing",
-                            getDouble(
-                                    obj,
-                                    "pc",
-                                    getDouble(
-                                            obj,
-                                            "close",
-                                            0
-                                    )
-                            )
-                    );
-
-            item.yesterday =
-                    getDouble(
-                            obj,
-                            "priceYesterday",
-                            getDouble(
-                                    obj,
-                                    "py",
-                                    getDouble(
-                                            obj,
-                                            "yesterday",
-                                            0
-                                    )
-                            )
-                    );
-
-            item.first =
-                    getDouble(
-                            obj,
-                            "priceFirst",
-                            getDouble(
-                                    obj,
-                                    "pf",
-                                    0
-                            )
-                    );
-
-            item.min =
-                    getDouble(
-                            obj,
-                            "priceMin",
-                            getDouble(
-                                    obj,
-                                    "pmin",
-                                    0
-                            )
-                    );
-
-            item.max =
-                    getDouble(
-                            obj,
-                            "priceMax",
-                            getDouble(
-                                    obj,
-                                    "pmax",
-                                    0
-                            )
-                    );
-
-            item.volume =
-                    getDouble(
-                            obj,
-                            "qTotTran5J",
-                            getDouble(
-                                    obj,
-                                    "tvol",
-                                    getDouble(
-                                            obj,
-                                            "volume",
-                                            0
-                                    )
-                            )
-                    );
-
-            item.value =
-                    getDouble(
-                            obj,
-                            "qTotCap",
-                            getDouble(
-                                    obj,
-                                    "tval",
-                                    getDouble(
-                                            obj,
-                                            "value",
-                                            0
-                                    )
-                            )
-                    );
-
-            item.trades =
-                    getDouble(
-                            obj,
-                            "zTotTran",
-                            getDouble(
-                                    obj,
-                                    "tno",
-                                    getDouble(
-                                            obj,
-                                            "trades",
-                                            0
-                                    )
-                            )
-                    );
-
-            item.percent =
-                    getDouble(
-                            obj,
-                            "percent",
-                            getDouble(
-                                    obj,
-                                    "priceChangePercent",
-                                    0
-                            )
-                    );
-
-            if (item.percent == 0 &&
-                    item.yesterday != 0) {
-
-                item.percent =
-                        (
-                                (
-                                        item.close -
-                                                item.yesterday
-                                )
-                                        /
-                                        item.yesterday
-                        ) *
-                                100.0;
-            }
-
-            if (item.symbol.length() > 0 ||
-                    item.insCode.length() > 0) {
-
-                marketItems.add(item);
-            }
-        }
-    }
 
     /*
      * ============================================================
-     * ابزارها
+     * JSON String
      * ============================================================
      */
 
-    private static String getString(
-            JSONObject object,
+    private String getString(
+            JSONObject obj,
             String key,
             String defaultValue) {
 
         try {
 
             Object value =
-                    object.opt(key);
+                    obj.opt(key);
 
             if (value == null ||
                     value == JSONObject.NULL) {
@@ -2515,7 +2835,30 @@ public class MainActivity extends Activity {
                 return defaultValue;
             }
 
-            return String.valueOf(value);
+            /*
+             * بعضی سرویس‌های بازار
+             * مقدار را داخل value قرار می‌دهند.
+             */
+            if (value instanceof JSONObject) {
+
+                JSONObject child =
+                        (JSONObject) value;
+
+                Object nested =
+                        child.opt("value");
+
+                if (nested != null &&
+                        nested != JSONObject.NULL) {
+
+                    return String.valueOf(
+                            nested
+                    );
+                }
+            }
+
+            return String.valueOf(
+                    value
+            );
 
         } catch (Exception e) {
 
@@ -2523,20 +2866,42 @@ public class MainActivity extends Activity {
         }
     }
 
-    private static double getDouble(
-            JSONObject object,
+
+    /*
+     * ============================================================
+     * JSON Number
+     * ============================================================
+     */
+
+    private double getDouble(
+            JSONObject obj,
             String key,
             double defaultValue) {
 
         try {
 
             Object value =
-                    object.opt(key);
+                    obj.opt(key);
 
             if (value == null ||
                     value == JSONObject.NULL) {
 
                 return defaultValue;
+            }
+
+            if (value instanceof JSONObject) {
+
+                JSONObject child =
+                        (JSONObject) value;
+
+                Object nested =
+                        child.opt("value");
+
+                if (nested != null &&
+                        nested != JSONObject.NULL) {
+
+                    value = nested;
+                }
             }
 
             if (value instanceof Number) {
@@ -2547,12 +2912,9 @@ public class MainActivity extends Activity {
             }
 
             String text =
-                    String.valueOf(value)
-                            .replace(
-                                    ",",
-                                    ""
-                            )
-                            .trim();
+                    String.valueOf(
+                            value
+                    ).trim();
 
             if (text.length() == 0) {
 
@@ -2569,8 +2931,19 @@ public class MainActivity extends Activity {
         }
     }
 
-    private static String firstNonEmpty(
+
+    /*
+     * ============================================================
+     * اولین مقدار غیرخالی
+     * ============================================================
+     */
+
+    private String firstNonEmpty(
             String... values) {
+
+        if (values == null) {
+            return "";
+        }
 
         for (String value :
                 values) {
@@ -2578,14 +2951,21 @@ public class MainActivity extends Activity {
             if (value != null &&
                     value.trim().length() > 0) {
 
-                return value;
+                return value.trim();
             }
         }
 
         return "";
     }
 
-    private static String formatNumber(
+
+    /*
+     * ============================================================
+     * فرمت اعداد
+     * ============================================================
+     */
+
+    private String formatNumber(
             double value) {
 
         if (Double.isNaN(value) ||
@@ -2600,8 +2980,7 @@ public class MainActivity extends Activity {
             return String.format(
                     Locale.US,
                     "%.2f B",
-                    value /
-                            1000000000.0
+                    value / 1000000000.0
             );
         }
 
@@ -2611,57 +2990,93 @@ public class MainActivity extends Activity {
             return String.format(
                     Locale.US,
                     "%.2f M",
-                    value /
-                            1000000.0
+                    value / 1000000.0
+            );
+        }
+
+        if (Math.abs(value) >=
+                1000) {
+
+            return String.format(
+                    Locale.US,
+                    "%.0f",
+                    value
             );
         }
 
         return String.format(
                 Locale.US,
-                "%,.0f",
+                "%.0f",
                 value
         );
     }
 
-    private static String formatPercent(
+
+    /*
+     * ============================================================
+     * درصد
+     * ============================================================
+     */
+
+    private String formatPercent(
             double value) {
 
         return String.format(
                 Locale.US,
-                "%+.2f%%",
+                "%.2f%%",
                 value
         );
     }
 
-    private static String getReadableError(
+
+    /*
+     * ============================================================
+     * نمایش خطای خوانا
+     * ============================================================
+     */
+
+    private String getReadableError(
             Exception e) {
+
+        if (e == null) {
+
+            return "خطای نامشخص";
+        }
 
         String message =
                 e.getMessage();
 
         if (message == null ||
-                message.trim().length() == 0) {
+                message.length() == 0) {
 
-            return "خطای نامشخص";
+            return e.getClass()
+                    .getSimpleName();
         }
 
         return message;
     }
+
+
+    /*
+     * ============================================================
+     * بستن کیبورد
+     * ============================================================
+     */
 
     private void hideKeyboard(
             View view) {
 
         try {
 
-            InputMethodManager imm =
+            InputMethodManager manager =
                     (InputMethodManager)
                             getSystemService(
-                                    Context.INPUT_METHOD_SERVICE
+                                    INPUT_METHOD_SERVICE
                             );
 
-            if (imm != null) {
+            if (manager != null) {
 
-                imm.hideSoftInputFromWindow(
+                manager.hideSoftInputFromWindow(
                         view.getWindowToken(),
                         0
                 );
@@ -2671,69 +3086,65 @@ public class MainActivity extends Activity {
         }
     }
 
-    /*
-     * ============================================================
-     * پایان Activity
-     * ============================================================
-     */
-
-    @Override
-    protected void onDestroy() {
-
-        super.onDestroy();
-
-        try {
-
-            executor.shutdownNow();
-
-        } catch (Exception ignored) {
-        }
-    }
 
     /*
      * ============================================================
-     * مدل اطلاعات بازار
+     * کلاس اطلاعات بازار
      * ============================================================
      */
 
     private static class MarketItem {
 
         String insCode = "";
+
         String symbol = "";
+
         String name = "";
 
         double first = 0;
+
         double last = 0;
+
         double close = 0;
+
         double yesterday = 0;
+
         double min = 0;
+
         double max = 0;
 
         double volume = 0;
+
         double value = 0;
+
         double trades = 0;
 
         double percent = 0;
     }
 
+
     /*
      * ============================================================
-     * مدل پول حقیقی
+     * کلاس پول حقیقی
      * ============================================================
      */
 
     private static class MoneyItem {
 
         String insCode = "";
+
         String symbol = "";
 
         double buyIndividual = 0;
+
         double sellIndividual = 0;
 
         double buyValue = 0;
+
         double sellValue = 0;
 
         double netVolume = 0;
+
         double netValue = 0;
     }
 }
