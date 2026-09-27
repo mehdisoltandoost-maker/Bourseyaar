@@ -31,10 +31,8 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -47,28 +45,26 @@ import javax.net.ssl.X509TrustManager;
 /*
  * بورس‌یار
  *
- * نسخه یک‌دست MainActivity
+ * نسخه اصلاح‌شده
  *
- * امکانات:
- * - اطلاعات کلی بازار
- * - پول هوشمند
- * - ورود و خروج پول
- * - تحلیل بنیادی
- * - تحلیل تکنیکال
- * - بررسی نمادها
- * - پیشنهادهای معاملاتی
+ * اصلاحات اصلی:
  *
- * اتصال:
- * TSETMC CDN
+ * 1- دریافت MarketWatch از TSETMC
+ * 2- تطبیق دقیق insCode
+ * 3- دریافت ClientTypeAll
+ * 4- اصلاح نمایش نمادهای فارسی
+ * 5- محاسبه خالص حجم پول حقیقی
+ * 6- محاسبه خالص ارزش پول حقیقی
+ * 7- رتبه‌بندی پول هوشمند بر اساس قدرت ورود پول
+ * 8- تفکیک ورود و خروج پول
+ * 9- مقاوم‌سازی JSON Parser
  *
- * نکته:
- * برای عبور از خطای Trust anchor که در نسخه قبلی دیده شد،
- * اتصال HTTPS مربوط به TSETMC با SSLContext مخصوص مدیریت می‌شود.
  */
+
 public class MainActivity extends Activity {
 
     // =========================================================
-    // آدرس‌های TSETMC
+    // TSETMC
     // =========================================================
 
     private static final String BASE_URL =
@@ -92,11 +88,12 @@ public class MainActivity extends Activity {
             "&RefID=0";
 
     private static final String MONEY_URL =
-            BASE_URL + "ClientType/GetClientTypeAll";
+            BASE_URL +
+            "ClientType/GetClientTypeAll";
 
 
     // =========================================================
-    // اجزای صفحه
+    // UI
     // =========================================================
 
     private LinearLayout root;
@@ -104,22 +101,25 @@ public class MainActivity extends Activity {
     private TextView titleText;
     private TextView statusText;
 
-    private final Handler handler = new Handler();
-
-    // داده‌های بازار
-    private final List<MarketItem> marketItems =
-            new ArrayList<>();
-
-    // داده‌های پول حقیقی/حقوقی
-    private final List<MoneyItem> moneyItems =
-            new ArrayList<>();
-
-    // برای جستجوی نماد
     private EditText searchBox;
+
+    private final Handler handler =
+            new Handler();
 
 
     // =========================================================
-    // چرخه Activity
+    // داده‌ها
+    // =========================================================
+
+    private final List<MarketItem> marketItems =
+            new ArrayList<>();
+
+    private final List<MoneyItem> moneyItems =
+            new ArrayList<>();
+
+
+    // =========================================================
+    // Activity
     // =========================================================
 
     @Override
@@ -130,6 +130,7 @@ public class MainActivity extends Activity {
 
         buildMainMenu();
     }
+
 
     @Override
     protected void onDestroy() {
@@ -145,17 +146,43 @@ public class MainActivity extends Activity {
     private void buildMainMenu() {
 
         root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.WHITE);
 
-        // عنوان
+        root.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        root.setBackgroundColor(
+                Color.WHITE
+        );
+
+
         titleText = new TextView(this);
-        titleText.setText("بورس‌یار");
+
+        titleText.setText(
+                "بورس‌یار"
+        );
+
         titleText.setTextSize(30);
-        titleText.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        titleText.setTextColor(Color.rgb(25, 70, 110));
-        titleText.setGravity(Gravity.CENTER);
-        titleText.setPadding(10, 25, 10, 20);
+
+        titleText.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        titleText.setTextColor(
+                Color.rgb(25, 70, 110)
+        );
+
+        titleText.setGravity(
+                Gravity.CENTER
+        );
+
+        titleText.setPadding(
+                10,
+                25,
+                10,
+                20
+        );
 
         root.addView(
                 titleText,
@@ -165,15 +192,30 @@ public class MainActivity extends Activity {
                 )
         );
 
-        // توضیح
-        TextView subtitle = new TextView(this);
+
+        TextView subtitle =
+                new TextView(this);
+
         subtitle.setText(
                 "دستیار تحلیل بازار سرمایه ایران"
         );
+
         subtitle.setTextSize(16);
-        subtitle.setGravity(Gravity.CENTER);
-        subtitle.setTextColor(Color.DKGRAY);
-        subtitle.setPadding(10, 0, 10, 20);
+
+        subtitle.setGravity(
+                Gravity.CENTER
+        );
+
+        subtitle.setTextColor(
+                Color.DKGRAY
+        );
+
+        subtitle.setPadding(
+                10,
+                0,
+                10,
+                20
+        );
 
         root.addView(
                 subtitle,
@@ -183,14 +225,28 @@ public class MainActivity extends Activity {
                 )
         );
 
-        // محتوا
-        ScrollView scroll = new ScrollView(this);
 
-        content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(20, 10, 20, 30);
+        ScrollView scroll =
+                new ScrollView(this);
+
+
+        content =
+                new LinearLayout(this);
+
+        content.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        content.setPadding(
+                20,
+                10,
+                20,
+                30
+        );
+
 
         scroll.addView(content);
+
 
         root.addView(
                 scroll,
@@ -200,6 +256,7 @@ public class MainActivity extends Activity {
                         1
                 )
         );
+
 
         addButton(
                 "اطلاعات کلی بازار",
@@ -211,6 +268,7 @@ public class MainActivity extends Activity {
                 }
         );
 
+
         addButton(
                 "پول هوشمند",
                 new View.OnClickListener() {
@@ -220,6 +278,7 @@ public class MainActivity extends Activity {
                     }
                 }
         );
+
 
         addButton(
                 "ورود و خروج پول",
@@ -231,6 +290,7 @@ public class MainActivity extends Activity {
                 }
         );
 
+
         addButton(
                 "تحلیل بنیادی",
                 new View.OnClickListener() {
@@ -240,6 +300,7 @@ public class MainActivity extends Activity {
                     }
                 }
         );
+
 
         addButton(
                 "تحلیل تکنیکال",
@@ -251,6 +312,7 @@ public class MainActivity extends Activity {
                 }
         );
 
+
         addButton(
                 "بررسی نمادها",
                 new View.OnClickListener() {
@@ -260,6 +322,7 @@ public class MainActivity extends Activity {
                     }
                 }
         );
+
 
         addButton(
                 "پیشنهادهای معاملاتی",
@@ -271,36 +334,50 @@ public class MainActivity extends Activity {
                 }
         );
 
+
         addButton(
                 "به‌روزرسانی اطلاعات",
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
+
+                        marketItems.clear();
+                        moneyItems.clear();
+
                         loadMarketData(true);
                     }
                 }
         );
+
 
         setContentView(root);
     }
 
 
     // =========================================================
-    // ساخت دکمه
+    // Button
     // =========================================================
 
     private void addButton(
             String text,
-            View.OnClickListener listener
-    ) {
+            View.OnClickListener listener) {
 
-        Button button = new Button(this);
+        Button button =
+                new Button(this);
 
         button.setText(text);
+
         button.setTextSize(18);
-        button.setTextColor(Color.rgb(30, 30, 30));
+
+        button.setTextColor(
+                Color.rgb(30, 30, 30)
+        );
+
         button.setAllCaps(false);
-        button.setGravity(Gravity.CENTER);
+
+        button.setGravity(
+                Gravity.CENTER
+        );
 
         LinearLayout.LayoutParams params =
                 new LinearLayout.LayoutParams(
@@ -315,26 +392,37 @@ public class MainActivity extends Activity {
                 8
         );
 
-        button.setOnClickListener(listener);
+        button.setOnClickListener(
+                listener
+        );
 
-        content.addView(button, params);
+        content.addView(
+                button,
+                params
+        );
     }
 
 
     // =========================================================
-    // صفحه داخلی
+    // Page
     // =========================================================
 
-    private void openPage(String title) {
+    private void openPage(
+            String title) {
 
         content.removeAllViews();
 
         titleText.setText(title);
 
-        Button back = new Button(this);
+        Button back =
+                new Button(this);
 
-        back.setText("←  بازگشت به منوی اصلی");
+        back.setText(
+                "←  بازگشت به منوی اصلی"
+        );
+
         back.setTextSize(17);
+
         back.setAllCaps(false);
 
         back.setOnClickListener(
@@ -346,30 +434,40 @@ public class MainActivity extends Activity {
                 }
         );
 
-        LinearLayout.LayoutParams bp =
+        content.addView(
+                back,
                 new LinearLayout.LayoutParams(
                         -1,
                         60
-                );
-
-        bp.setMargins(0, 5, 0, 15);
-
-        content.addView(back, bp);
+                )
+        );
     }
 
 
     // =========================================================
-    // متن
+    // Text
     // =========================================================
 
-    private TextView addText(String text) {
+    private TextView addText(
+            String text) {
 
-        TextView tv = new TextView(this);
+        TextView tv =
+                new TextView(this);
 
         tv.setText(text);
+
         tv.setTextSize(17);
-        tv.setTextColor(Color.DKGRAY);
-        tv.setPadding(8, 8, 8, 8);
+
+        tv.setTextColor(
+                Color.DKGRAY
+        );
+
+        tv.setPadding(
+                8,
+                8,
+                8,
+                8
+        );
 
         content.addView(
                 tv,
@@ -384,17 +482,24 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // وضعیت
+    // Status
     // =========================================================
 
-    private void setStatus(String text) {
+    private void setStatus(
+            String text) {
 
-        if (statusText == null) {
+        if (statusText == null ||
+                statusText.getParent() != content) {
 
-            statusText = new TextView(this);
+            statusText =
+                    new TextView(this);
 
             statusText.setTextSize(17);
-            statusText.setGravity(Gravity.CENTER);
+
+            statusText.setGravity(
+                    Gravity.CENTER
+            );
+
             statusText.setPadding(
                     10,
                     15,
@@ -413,24 +518,25 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // اطلاعات کلی بازار
+    // Market
     // =========================================================
 
     private void showMarketOverview() {
 
-        openPage("اطلاعات بازار");
+        openPage(
+                "اطلاعات بازار"
+        );
 
-        setStatus("در حال دریافت اطلاعات...");
+        setStatus(
+                "در حال دریافت اطلاعات بازار..."
+        );
 
         loadMarketData(false);
     }
 
 
-    // =========================================================
-    // دریافت اطلاعات بازار
-    // =========================================================
-
-    private void loadMarketData(final boolean returnToMenu) {
+    private void loadMarketData(
+            final boolean returnToMenu) {
 
         new Thread(
                 new Runnable() {
@@ -439,10 +545,14 @@ public class MainActivity extends Activity {
 
                         try {
 
-                            final String response =
-                                    httpGet(MARKET_URL);
+                            String response =
+                                    httpGet(
+                                            MARKET_URL
+                                    );
 
-                            parseMarketWatch(response);
+                            parseMarketWatch(
+                                    response
+                            );
 
                             runOnUiThread(
                                     new Runnable() {
@@ -452,8 +562,7 @@ public class MainActivity extends Activity {
                                             if (marketItems.isEmpty()) {
 
                                                 setStatus(
-                                                        "اطلاعات بازار دریافت نشد.\n" +
-                                                        "ممکن است TSETMC از این اتصال در دسترس نباشد."
+                                                        "اطلاعات بازار دریافت نشد."
                                                 );
 
                                             } else {
@@ -493,122 +602,57 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // تجزیه اطلاعات MarketWatch
+    // Market Parser
     // =========================================================
 
-    private void parseMarketWatch(String response)
+    private void parseMarketWatch(
+            String response)
             throws Exception {
 
         marketItems.clear();
 
         if (response == null ||
                 response.trim().length() == 0) {
-            return;
-        }
-
-        String text = response.trim();
-
-        // ---------------------------------------------
-        // حالت آرایه مستقیم
-        // ---------------------------------------------
-
-        if (text.startsWith("[")) {
-
-            JSONArray array =
-                    new JSONArray(text);
-
-            parseMarketArray(array);
 
             return;
         }
 
-        // ---------------------------------------------
-        // حالت Object
-        // ---------------------------------------------
-
-        JSONObject rootObject =
-                new JSONObject(text);
+        String text =
+                response.trim();
 
         JSONArray array = null;
 
-        String[] keys = {
-                "marketwatch",
-                "marketWatch",
-                "marketWatchDto",
-                "data",
-                "items"
-        };
+        if (text.startsWith("[")) {
 
-        for (String key : keys) {
+            array =
+                    new JSONArray(text);
 
-            if (rootObject.has(key) &&
-                    !rootObject.isNull(key)) {
+        } else {
 
-                Object obj =
-                        rootObject.get(key);
+            JSONObject object =
+                    new JSONObject(text);
 
-                if (obj instanceof JSONArray) {
-
-                    array = (JSONArray) obj;
-                    break;
-                }
-            }
+            array =
+                    findArray(
+                            object,
+                            "marketwatch",
+                            "marketWatch",
+                            "marketWatchDto",
+                            "data",
+                            "items",
+                            "result"
+                    );
         }
 
         if (array != null) {
 
             parseMarketArray(array);
-
-            return;
-        }
-
-        // بعضی پاسخ‌ها ممکن است یک لایه data داشته باشند
-        if (rootObject.has("result")) {
-
-            Object result =
-                    rootObject.get("result");
-
-            if (result instanceof JSONArray) {
-
-                parseMarketArray(
-                        (JSONArray) result
-                );
-
-                return;
-            }
-
-            if (result instanceof JSONObject) {
-
-                JSONObject ro =
-                        (JSONObject) result;
-
-                for (String key : keys) {
-
-                    if (ro.has(key)) {
-
-                        Object obj =
-                                ro.get(key);
-
-                        if (obj instanceof JSONArray) {
-
-                            parseMarketArray(
-                                    (JSONArray) obj
-                            );
-
-                            return;
-                        }
-                    }
-                }
-            }
         }
     }
 
 
-    // =========================================================
-    // تجزیه آرایه بازار
-    // =========================================================
-
-    private void parseMarketArray(JSONArray array) {
+    private void parseMarketArray(
+            JSONArray array) {
 
         if (array == null) {
             return;
@@ -620,50 +664,78 @@ public class MainActivity extends Activity {
 
             try {
 
-                Object obj =
+                Object object =
                         array.get(i);
 
-                if (!(obj instanceof JSONObject)) {
+                if (!(object instanceof JSONObject)) {
                     continue;
                 }
 
                 JSONObject o =
-                        (JSONObject) obj;
+                        (JSONObject) object;
+
 
                 MarketItem item =
                         new MarketItem();
 
+
                 item.insCode =
-                        getString(
-                                o,
-                                "insCode",
-                                "InsCode",
-                                "instrumentId"
+                        cleanInsCode(
+                                getString(
+                                        o,
+                                        "insCode",
+                                        "InsCode",
+                                        "instrumentId",
+                                        "instrumentID"
+                                )
                         );
+
 
                 item.symbol =
-                        firstNonEmpty(
-                                getString(
-                                        o,
-                                        "lVal18AFC",
-                                        "lVal18",
-                                        "symbol",
-                                        "symbolName"
-                                ),
-                                "بدون نماد"
+                        cleanPersian(
+                                firstNonEmpty(
+                                        getString(
+                                                o,
+                                                "lVal18AFC"
+                                        ),
+                                        getString(
+                                                o,
+                                                "lVal18"
+                                        ),
+                                        getString(
+                                                o,
+                                                "symbol"
+                                        ),
+                                        getString(
+                                                o,
+                                                "symbolName"
+                                        )
+                                )
                         );
 
+
                 item.name =
-                        firstNonEmpty(
-                                getString(
-                                        o,
-                                        "lVal30",
-                                        "name",
-                                        "instrumentName",
-                                        "title"
-                                ),
-                                ""
+                        cleanPersian(
+                                firstNonEmpty(
+                                        getString(
+                                                o,
+                                                "lVal30"
+                                        ),
+                                        getString(
+                                                o,
+                                                "name"
+                                        ),
+                                        getString(
+                                                o,
+                                                "instrumentName"
+                                        ),
+                                        getString(
+                                                o,
+                                                "title"
+                                        )
+                                )
                         );
+
 
                 item.first =
                         getDouble(
@@ -672,6 +744,7 @@ public class MainActivity extends Activity {
                                 "priceFirst",
                                 "first"
                         );
+
 
                 item.last =
                         getDouble(
@@ -682,6 +755,7 @@ public class MainActivity extends Activity {
                                 "lastPrice"
                         );
 
+
                 item.close =
                         getDouble(
                                 o,
@@ -690,6 +764,7 @@ public class MainActivity extends Activity {
                                 "close",
                                 "closingPrice"
                         );
+
 
                 item.yesterday =
                         getDouble(
@@ -700,6 +775,7 @@ public class MainActivity extends Activity {
                                 "yesterdayPrice"
                         );
 
+
                 item.min =
                         getDouble(
                                 o,
@@ -708,6 +784,7 @@ public class MainActivity extends Activity {
                                 "min"
                         );
 
+
                 item.max =
                         getDouble(
                                 o,
@@ -715,6 +792,7 @@ public class MainActivity extends Activity {
                                 "priceMax",
                                 "max"
                         );
+
 
                 item.volume =
                         getDouble(
@@ -725,6 +803,7 @@ public class MainActivity extends Activity {
                                 "tradeVolume"
                         );
 
+
                 item.value =
                         getDouble(
                                 o,
@@ -733,6 +812,7 @@ public class MainActivity extends Activity {
                                 "value",
                                 "tradeValue"
                         );
+
 
                 item.trades =
                         getDouble(
@@ -743,12 +823,15 @@ public class MainActivity extends Activity {
                                 "tradeCount"
                         );
 
+
                 double change =
                         getDouble(
                                 o,
+                                "priceChange",
                                 "percent",
                                 "priceChangePercent"
                         );
+
 
                 if (change == 0 &&
                         item.yesterday != 0) {
@@ -763,16 +846,18 @@ public class MainActivity extends Activity {
                         change =
                                 ((price -
                                         item.yesterday)
-                                        / item.yesterday)
+                                        /
+                                        item.yesterday)
                                         * 100.0;
                     }
                 }
 
-                item.percent = change;
 
-                // فقط رکوردهایی که کد دارند
-                if (item.insCode != null &&
-                        item.insCode.length() > 0) {
+                item.percent =
+                        change;
+
+
+                if (item.insCode.length() > 0) {
 
                     marketItems.add(item);
                 }
@@ -784,35 +869,14 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // نمایش نتیجه بازار
+    // Market Result
     // =========================================================
 
     private void showMarketResult() {
 
         content.removeAllViews();
 
-        Button back = new Button(this);
-
-        back.setText("←  بازگشت به منوی اصلی");
-        back.setTextSize(17);
-        back.setAllCaps(false);
-
-        back.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        buildMainMenu();
-                    }
-                }
-        );
-
-        content.addView(
-                back,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        60
-                )
-        );
+        addBackButton();
 
         int positive = 0;
         int negative = 0;
@@ -822,14 +886,20 @@ public class MainActivity extends Activity {
         double value = 0;
         double trades = 0;
 
+
         for (MarketItem item :
                 marketItems) {
 
             if (item.percent > 0.001) {
+
                 positive++;
+
             } else if (item.percent < -0.001) {
+
                 negative++;
+
             } else {
+
                 unchanged++;
             }
 
@@ -838,40 +908,48 @@ public class MainActivity extends Activity {
             trades += item.trades;
         }
 
+
         addText(
                 "تعداد نمادهای دریافت‌شده: " +
-                        formatNumber(marketItems.size())
+                        formatNumber(
+                                marketItems.size()
+                        )
         );
+
 
         addText(
                 "مثبت: " +
-                        formatNumber(positive) +
+                        positive +
                         "    منفی: " +
-                        formatNumber(negative) +
+                        negative +
                         "    بدون تغییر: " +
-                        formatNumber(unchanged)
+                        unchanged
         );
+
 
         addText(
                 "حجم معاملات: " +
                         formatNumber(volume)
         );
 
+
         addText(
                 "ارزش معاملات: " +
                         formatNumber(value)
         );
+
 
         addText(
                 "تعداد معاملات: " +
                         formatNumber(trades)
         );
 
+
         addText(
                 "────────────────────"
         );
 
-        // مرتب‌سازی بر اساس قدرمطلق تغییر
+
         Collections.sort(
                 marketItems,
                 new Comparator<MarketItem>() {
@@ -888,7 +966,9 @@ public class MainActivity extends Activity {
                 }
         );
 
+
         int count = 0;
+
 
         for (MarketItem item :
                 marketItems) {
@@ -904,15 +984,12 @@ public class MainActivity extends Activity {
     }
 
 
-    // =========================================================
-    // ردیف بازار
-    // =========================================================
-
     private void addMarketRow(
             MarketItem item) {
 
         TextView row =
                 new TextView(this);
+
 
         String symbol =
                 firstNonEmpty(
@@ -920,46 +997,78 @@ public class MainActivity extends Activity {
                         "نماد ناشناس"
                 );
 
-        String priceText =
+
+        double price =
                 item.last != 0
-                        ? formatNumber(item.last)
-                        : formatNumber(item.close);
+                        ? item.last
+                        : item.close;
+
 
         String text =
                 symbol +
-                "   " +
-                formatPercent(item.percent) +
+                "    " +
+                formatPercent(
+                        item.percent
+                ) +
                 "\nقیمت: " +
-                priceText +
-                "   دیروز: " +
-                formatNumber(item.yesterday) +
+                formatNumber(price) +
+                "    دیروز: " +
+                formatNumber(
+                        item.yesterday
+                ) +
                 "\nحجم: " +
-                formatNumber(item.volume) +
-                "   ارزش: " +
-                formatNumber(item.value) +
+                formatNumber(
+                        item.volume
+                ) +
+                "    ارزش: " +
+                formatNumber(
+                        item.value
+                ) +
                 "\nمعاملات: " +
-                formatNumber(item.trades);
+                formatNumber(
+                        item.trades
+                );
+
 
         row.setText(text);
+
         row.setTextSize(16);
-        row.setPadding(15, 14, 15, 14);
+
+        row.setPadding(
+                15,
+                14,
+                15,
+                14
+        );
+
 
         if (item.percent > 0) {
 
             row.setTextColor(
-                    Color.rgb(0, 120, 60)
+                    Color.rgb(
+                            0,
+                            120,
+                            60
+                    )
             );
 
         } else if (item.percent < 0) {
 
             row.setTextColor(
-                    Color.rgb(190, 30, 30)
+                    Color.rgb(
+                            190,
+                            30,
+                            30
+                    )
             );
 
         } else {
 
-            row.setTextColor(Color.DKGRAY);
+            row.setTextColor(
+                    Color.DKGRAY
+            );
         }
+
 
         content.addView(
                 row,
@@ -972,16 +1081,19 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // پول هوشمند
+    // Smart Money
     // =========================================================
 
     private void showSmartMoney() {
 
-        openPage("پول هوشمند");
+        openPage(
+                "پول هوشمند"
+        );
 
         setStatus(
-                "در حال دریافت اطلاعات پول حقیقی..."
+                "در حال دریافت اطلاعات بازار..."
         );
+
 
         ensureMarketLoaded(
                 new Runnable() {
@@ -1004,7 +1116,7 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // اطمینان از وجود اطلاعات بازار
+    // Ensure Market
     // =========================================================
 
     private void ensureMarketLoaded(
@@ -1017,6 +1129,7 @@ public class MainActivity extends Activity {
             return;
         }
 
+
         new Thread(
                 new Runnable() {
                     @Override
@@ -1025,20 +1138,35 @@ public class MainActivity extends Activity {
                         try {
 
                             String response =
-                                    httpGet(MARKET_URL);
+                                    httpGet(
+                                            MARKET_URL
+                                    );
 
-                            parseMarketWatch(response);
+                            parseMarketWatch(
+                                    response
+                            );
+
 
                             runOnUiThread(
                                     new Runnable() {
                                         @Override
                                         public void run() {
-                                            next.run();
+
+                                            if (marketItems.isEmpty()) {
+
+                                                setStatus(
+                                                        "اطلاعات بازار دریافت نشد."
+                                                );
+
+                                            } else {
+
+                                                next.run();
+                                            }
                                         }
                                     }
                             );
 
-                        } catch (Exception e) {
+                        } catch (final Exception e) {
 
                             runOnUiThread(
                                     new Runnable() {
@@ -1046,7 +1174,7 @@ public class MainActivity extends Activity {
                                         public void run() {
 
                                             setStatus(
-                                                    "خطا در دریافت اطلاعات بازار\n\n" +
+                                                    "خطا در دریافت بازار\n\n" +
                                                     getReadableError(e)
                                             );
                                         }
@@ -1060,7 +1188,7 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // دریافت اطلاعات پول
+    // Money
     // =========================================================
 
     private void loadMoneyData(
@@ -1074,18 +1202,35 @@ public class MainActivity extends Activity {
                         try {
 
                             String response =
-                                    httpGet(MONEY_URL);
+                                    httpGet(
+                                            MONEY_URL
+                                    );
 
-                            parseMoney(response);
+
+                            parseMoney(
+                                    response
+                            );
+
 
                             runOnUiThread(
                                     new Runnable() {
                                         @Override
                                         public void run() {
-                                            next.run();
+
+                                            if (moneyItems.isEmpty()) {
+
+                                                setStatus(
+                                                        "داده پول حقیقی از TSETMC دریافت نشد."
+                                                );
+
+                                            } else {
+
+                                                next.run();
+                                            }
                                         }
                                     }
                             );
+
 
                         } catch (final Exception e) {
 
@@ -1095,7 +1240,7 @@ public class MainActivity extends Activity {
                                         public void run() {
 
                                             setStatus(
-                                                    "خطا در پول هوشمند\n\n" +
+                                                    "خطا در پول حقیقی\n\n" +
                                                     getReadableError(e)
                                             );
                                         }
@@ -1109,7 +1254,7 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // تجزیه ClientType
+    // Money Parser
     // =========================================================
 
     private void parseMoney(
@@ -1118,15 +1263,20 @@ public class MainActivity extends Activity {
 
         moneyItems.clear();
 
+
         if (response == null ||
                 response.trim().length() == 0) {
+
             return;
         }
+
 
         String text =
                 response.trim();
 
+
         JSONArray array = null;
+
 
         if (text.startsWith("[")) {
 
@@ -1135,38 +1285,26 @@ public class MainActivity extends Activity {
 
         } else {
 
-            JSONObject obj =
+            JSONObject object =
                     new JSONObject(text);
 
-            String[] keys = {
-                    "clientTypeAllDto",
-                    "clientType",
-                    "data",
-                    "items"
-            };
 
-            for (String key : keys) {
-
-                if (obj.has(key) &&
-                        !obj.isNull(key)) {
-
-                    Object x =
-                            obj.get(key);
-
-                    if (x instanceof JSONArray) {
-
-                        array =
-                                (JSONArray) x;
-
-                        break;
-                    }
-                }
-            }
+            array =
+                    findArray(
+                            object,
+                            "clientTypeAllDto",
+                            "clientType",
+                            "data",
+                            "items",
+                            "result"
+                    );
         }
+
 
         if (array == null) {
             return;
         }
+
 
         for (int i = 0;
              i < array.length();
@@ -1174,18 +1312,37 @@ public class MainActivity extends Activity {
 
             try {
 
+                Object raw =
+                        array.get(i);
+
+
+                if (!(raw instanceof JSONObject)) {
+                    continue;
+                }
+
+
                 JSONObject o =
-                        array.getJSONObject(i);
+                        (JSONObject) raw;
+
 
                 MoneyItem item =
                         new MoneyItem();
 
+
                 item.insCode =
-                        getString(
-                                o,
-                                "insCode",
-                                "InsCode"
+                        cleanInsCode(
+                                getString(
+                                        o,
+                                        "insCode",
+                                        "InsCode"
+                                )
                         );
+
+
+                if (item.insCode.length() == 0) {
+                    continue;
+                }
+
 
                 item.buyIndividual =
                         getDouble(
@@ -1195,6 +1352,7 @@ public class MainActivity extends Activity {
                                 "nBuyVolume"
                         );
 
+
                 item.sellIndividual =
                         getDouble(
                                 o,
@@ -1203,12 +1361,14 @@ public class MainActivity extends Activity {
                                 "nSellVolume"
                         );
 
+
                 item.buyValue =
                         getDouble(
                                 o,
                                 "buy_I_Value",
                                 "buyIValue"
                         );
+
 
                 item.sellValue =
                         getDouble(
@@ -1217,31 +1377,81 @@ public class MainActivity extends Activity {
                                 "sellIValue"
                         );
 
+
+                item.buyIndividualCount =
+                        getDouble(
+                                o,
+                                "buy_I_Count",
+                                "buy_CountI"
+                        );
+
+
+                item.sellIndividualCount =
+                        getDouble(
+                                o,
+                                "sell_I_Count",
+                                "sell_CountI"
+                        );
+
+
                 item.netVolume =
                         item.buyIndividual -
                                 item.sellIndividual;
 
+
                 item.netValue =
                         item.buyValue -
                                 item.sellValue;
+
 
                 MarketItem market =
                         findMarketItem(
                                 item.insCode
                         );
 
+
                 if (market != null) {
 
                     item.symbol =
-                            market.symbol;
+                            cleanPersian(
+                                    market.symbol
+                            );
+
+                    item.price =
+                            market.last != 0
+                                    ? market.last
+                                    : market.close;
+
+                    item.marketVolume =
+                            market.volume;
+
+                    item.percent =
+                            market.percent;
 
                 } else {
 
                     item.symbol =
-                            "نماد ناشناس";
+                            cleanPersian(
+                                    getString(
+                                            o,
+                                            "lVal18AFC",
+                                            "lVal18",
+                                            "symbol"
+                                    )
+                            );
                 }
 
+
+                if (item.symbol.length() == 0) {
+
+                    item.symbol =
+                            "نماد " +
+                            item.insCode;
+                }
+
+
                 moneyItems.add(item);
+
 
             } catch (Exception ignored) {
             }
@@ -1250,70 +1460,70 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // پیدا کردن نماد
+    // Find Market
     // =========================================================
 
     private MarketItem findMarketItem(
             String insCode) {
 
-        if (insCode == null) {
+        String target =
+                cleanInsCode(insCode);
+
+
+        if (target.length() == 0) {
             return null;
         }
+
 
         for (MarketItem item :
                 marketItems) {
 
-            if (insCode.equals(
-                    item.insCode
+            if (target.equals(
+                    cleanInsCode(
+                            item.insCode
+                    )
             )) {
 
                 return item;
             }
         }
 
+
         return null;
     }
 
 
     // =========================================================
-    // نمایش پول هوشمند
+    // Smart Money Display
     // =========================================================
 
     private void displaySmartMoney() {
 
         content.removeAllViews();
 
-        Button back = new Button(this);
+        addBackButton();
 
-        back.setText("←  بازگشت به منوی اصلی");
-        back.setTextSize(17);
-        back.setAllCaps(false);
 
-        back.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        buildMainMenu();
-                    }
-                }
+        addText(
+                "پول هوشمند"
         );
 
-        content.addView(
-                back,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        60
-                )
+
+        addText(
+                "رتبه‌بندی بر اساس خالص ارزش پول حقیقی"
         );
 
-        if (moneyItems.isEmpty()) {
 
-            addText(
-                    "اطلاعات پول حقیقی دریافت نشد."
-            );
+        addText(
+                "سبز = ورود پول حقیقی\n" +
+                "قرمز = خروج پول حقیقی"
+        );
 
-            return;
-        }
+
+        addText(
+                "────────────────────"
+        );
+
 
         Collections.sort(
                 moneyItems,
@@ -1323,28 +1533,42 @@ public class MainActivity extends Activity {
                             MoneyItem a,
                             MoneyItem b) {
 
+                        double av =
+                                Math.abs(
+                                        a.netValue
+                                );
+
+                        double bv =
+                                Math.abs(
+                                        b.netValue
+                                );
+
+
+                        if (av == 0 &&
+                                bv == 0) {
+
+                            return Double.compare(
+                                    Math.abs(
+                                            b.netVolume
+                                    ),
+                                    Math.abs(
+                                            a.netVolume
+                                    )
+                            );
+                        }
+
+
                         return Double.compare(
-                                Math.abs(b.netVolume),
-                                Math.abs(a.netVolume)
+                                bv,
+                                av
                         );
                     }
                 }
         );
 
-        addText(
-                "پول هوشمند بر اساس خالص حجم خرید حقیقی"
-        );
-
-        addText(
-                "سبز = ورود پول حقیقی\n" +
-                "قرمز = خروج پول حقیقی"
-        );
-
-        addText(
-                "────────────────────"
-        );
 
         int count = 0;
+
 
         for (MoneyItem item :
                 moneyItems) {
@@ -1353,66 +1577,144 @@ public class MainActivity extends Activity {
                 break;
             }
 
-            if (Math.abs(item.netVolume) < 1) {
+
+            if (Math.abs(
+                    item.netVolume
+            ) < 1 &&
+                    Math.abs(
+                            item.netValue
+                    ) < 1) {
+
                 continue;
             }
 
-            addMoneyRow(item);
+
+            addSmartMoneyRow(
+                    item
+            );
+
 
             count++;
+        }
+
+
+        if (count == 0) {
+
+            addText(
+                    "داده قابل استفاده برای پول هوشمند پیدا نشد."
+            );
         }
     }
 
 
     // =========================================================
-    // ردیف پول
+    // Smart Money Row
     // =========================================================
 
-    private void addMoneyRow(
+    private void addSmartMoneyRow(
             MoneyItem item) {
 
         TextView row =
                 new TextView(this);
 
-        String symbol =
-                firstNonEmpty(
-                        item.symbol,
-                        "نماد ناشناس"
-                );
 
-        String text =
-                symbol +
-                "\nخالص حجم: " +
-                formatNumber(item.netVolume) +
-                "\nخرید حقیقی: " +
-                formatNumber(item.buyIndividual) +
-                "   فروش حقیقی: " +
-                formatNumber(item.sellIndividual);
+        String direction;
 
-        if (item.buyValue != 0 ||
-                item.sellValue != 0) {
 
-            text +=
-                    "\nخالص ارزش: " +
-                    formatNumber(item.netValue);
+        if (item.netValue > 0) {
+
+            direction =
+                    "ورود پول حقیقی";
+
+        } else if (item.netValue < 0) {
+
+            direction =
+                    "خروج پول حقیقی";
+
+        } else if (item.netVolume > 0) {
+
+            direction =
+                    "ورود بر اساس حجم";
+
+        } else {
+
+            direction =
+                    "خروج بر اساس حجم";
         }
 
-        row.setText(text);
-        row.setTextSize(16);
-        row.setPadding(15, 15, 15, 15);
 
-        if (item.netVolume > 0) {
+        String text =
+                item.symbol +
+                "\n" +
+                direction +
+                "\nخالص ارزش: " +
+                formatNumber(
+                        item.netValue
+                ) +
+                "\nخالص حجم: " +
+                formatNumber(
+                        item.netVolume
+                ) +
+                "\nخرید حقیقی: " +
+                formatNumber(
+                        item.buyIndividual
+                ) +
+                "    فروش حقیقی: " +
+                formatNumber(
+                        item.sellIndividual
+                );
+
+
+        if (item.buyIndividualCount != 0 ||
+                item.sellIndividualCount != 0) {
+
+            text +=
+                    "\nتعداد خریدار حقیقی: " +
+                    formatNumber(
+                            item.buyIndividualCount
+                    ) +
+                    "    فروشنده حقیقی: " +
+                    formatNumber(
+                            item.sellIndividualCount
+                    );
+        }
+
+
+        row.setText(text);
+
+        row.setTextSize(16);
+
+        row.setPadding(
+                15,
+                15,
+                15,
+                15
+        );
+
+
+        if (item.netValue > 0 ||
+                (item.netValue == 0 &&
+                        item.netVolume > 0)) {
 
             row.setTextColor(
-                    Color.rgb(0, 120, 60)
+                    Color.rgb(
+                            0,
+                            120,
+                            60
+                    )
             );
 
         } else {
 
             row.setTextColor(
-                    Color.rgb(190, 30, 30)
+                    Color.rgb(
+                            190,
+                            30,
+                            30
+                    )
             );
         }
+
 
         content.addView(
                 row,
@@ -1425,16 +1727,20 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // ورود و خروج پول
+    // Money Flow
     // =========================================================
 
     private void showMoneyFlow() {
 
-        openPage("ورود و خروج پول");
+        openPage(
+                "ورود و خروج پول"
+        );
+
 
         setStatus(
                 "در حال دریافت اطلاعات..."
         );
+
 
         ensureMarketLoaded(
                 new Runnable() {
@@ -1456,36 +1762,12 @@ public class MainActivity extends Activity {
     }
 
 
-    // =========================================================
-    // نمایش خلاصه ورود و خروج
-    // =========================================================
-
     private void displayMoneyFlow() {
 
         content.removeAllViews();
 
-        Button back = new Button(this);
+        addBackButton();
 
-        back.setText("←  بازگشت به منوی اصلی");
-        back.setTextSize(17);
-        back.setAllCaps(false);
-
-        back.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        buildMainMenu();
-                    }
-                }
-        );
-
-        content.addView(
-                back,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        60
-                )
-        );
 
         double buy = 0;
         double sell = 0;
@@ -1493,54 +1775,68 @@ public class MainActivity extends Activity {
         double buyValue = 0;
         double sellValue = 0;
 
+
         for (MoneyItem item :
                 moneyItems) {
 
-            buy += item.buyIndividual;
-            sell += item.sellIndividual;
+            buy +=
+                    item.buyIndividual;
 
-            buyValue += item.buyValue;
-            sellValue += item.sellValue;
+            sell +=
+                    item.sellIndividual;
+
+            buyValue +=
+                    item.buyValue;
+
+            sellValue +=
+                    item.sellValue;
         }
 
-        double net =
+
+        double netVolume =
                 buy - sell;
+
 
         double netValue =
                 buyValue - sellValue;
+
 
         addText(
                 "خرید حقیقی: " +
                         formatNumber(buy)
         );
 
+
         addText(
                 "فروش حقیقی: " +
                         formatNumber(sell)
         );
 
-        addText(
-                "خالص جریان حجم: " +
-                        formatNumber(net)
-        );
-
-        if (buyValue != 0 ||
-                sellValue != 0) {
-
-            addText(
-                    "خالص ارزش حقیقی: " +
-                            formatNumber(netValue)
-            );
-        }
 
         addText(
-                "تعداد نمادهای دارای اطلاعات: " +
-                        formatNumber(moneyItems.size())
+                "خالص حجم: " +
+                        formatNumber(netVolume)
         );
+
+
+        addText(
+                "خالص ارزش پول حقیقی: " +
+                        formatNumber(netValue)
+        );
+
+
+        addText(
+                "تعداد نمادها: " +
+                        formatNumber(
+                                moneyItems.size()
+                        )
+        );
+
 
         addText(
                 "────────────────────"
         );
+
 
         Collections.sort(
                 moneyItems,
@@ -1551,14 +1847,20 @@ public class MainActivity extends Activity {
                             MoneyItem b) {
 
                         return Double.compare(
-                                Math.abs(b.netVolume),
-                                Math.abs(a.netVolume)
+                                Math.abs(
+                                        b.netValue
+                                ),
+                                Math.abs(
+                                        a.netValue
+                                )
                         );
                     }
                 }
         );
 
+
         int count = 0;
+
 
         for (MoneyItem item :
                 moneyItems) {
@@ -1567,11 +1869,19 @@ public class MainActivity extends Activity {
                 break;
             }
 
-            if (Math.abs(item.netVolume) < 1) {
+
+            if (Math.abs(
+                    item.netValue
+            ) < 1 &&
+                    Math.abs(
+                            item.netVolume
+                    ) < 1) {
+
                 continue;
             }
 
-            addMoneyRow(item);
+
+            addSmartMoneyRow(item);
 
             count++;
         }
@@ -1579,21 +1889,25 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // بررسی نمادها
+    // Search Symbols
     // =========================================================
 
     private void showSymbols() {
 
-        openPage("بررسی نمادها");
+        openPage(
+                "بررسی نمادها"
+        );
+
 
         searchBox =
                 new EditText(this);
 
         searchBox.setHint(
-                "نام نماد را وارد کنید؛ مثلا فولاد"
+                "نام نماد؛ مثلا فولاد"
         );
 
         searchBox.setTextSize(17);
+
 
         content.addView(
                 searchBox,
@@ -1603,12 +1917,18 @@ public class MainActivity extends Activity {
                 )
         );
 
+
         Button search =
                 new Button(this);
 
-        search.setText("جستجوی نماد");
+        search.setText(
+                "جستجوی نماد"
+        );
+
         search.setTextSize(17);
+
         search.setAllCaps(false);
+
 
         search.setOnClickListener(
                 new View.OnClickListener() {
@@ -1621,6 +1941,7 @@ public class MainActivity extends Activity {
                                         .toString()
                                         .trim();
 
+
                         if (q.length() == 0) {
 
                             Toast.makeText(
@@ -1632,12 +1953,14 @@ public class MainActivity extends Activity {
                             return;
                         }
 
+
                         hideKeyboard();
 
                         searchSymbol(q);
                     }
                 }
         );
+
 
         content.addView(
                 search,
@@ -1647,15 +1970,12 @@ public class MainActivity extends Activity {
                 )
         );
 
+
         addText(
                 "مثال: فولاد، فملی، خودرو، شپنا"
         );
     }
 
-
-    // =========================================================
-    // جستجوی نماد
-    // =========================================================
 
     private void searchSymbol(
             final String query) {
@@ -1665,6 +1985,7 @@ public class MainActivity extends Activity {
                         query +
                         " ..."
         );
+
 
         new Thread(
                 new Runnable() {
@@ -1679,13 +2000,16 @@ public class MainActivity extends Activity {
                                             "UTF-8"
                                     );
 
+
                             String url =
                                     BASE_URL +
                                     "Instrument/GetInstrumentSearch/" +
                                     encoded;
 
+
                             final String response =
                                     httpGet(url);
+
 
                             runOnUiThread(
                                     new Runnable() {
@@ -1698,6 +2022,7 @@ public class MainActivity extends Activity {
                                         }
                                     }
                             );
+
 
                         } catch (final Exception e) {
 
@@ -1720,40 +2045,18 @@ public class MainActivity extends Activity {
     }
 
 
-    // =========================================================
-    // نتیجه جستجو
-    // =========================================================
-
     private void displaySearchResult(
             String response) {
 
         content.removeAllViews();
 
-        Button back = new Button(this);
+        addBackButton();
 
-        back.setText("←  بازگشت");
-        back.setAllCaps(false);
-
-        back.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        showSymbols();
-                    }
-                }
-        );
-
-        content.addView(
-                back,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        60
-                )
-        );
 
         try {
 
-            JSONArray array = null;
+            JSONArray array;
+
 
             if (response.trim().startsWith("[")) {
 
@@ -1762,32 +2065,19 @@ public class MainActivity extends Activity {
 
             } else {
 
-                JSONObject obj =
+                JSONObject object =
                         new JSONObject(response);
 
-                String[] keys = {
-                        "instrumentSearch",
-                        "data",
-                        "items"
-                };
-
-                for (String key : keys) {
-
-                    if (obj.has(key)) {
-
-                        Object x =
-                                obj.get(key);
-
-                        if (x instanceof JSONArray) {
-
-                            array =
-                                    (JSONArray) x;
-
-                            break;
-                        }
-                    }
-                }
+                array =
+                        findArray(
+                                object,
+                                "instrumentSearch",
+                                "data",
+                                "items",
+                                "result"
+                        );
             }
+
 
             if (array == null ||
                     array.length() == 0) {
@@ -1799,6 +2089,7 @@ public class MainActivity extends Activity {
                 return;
             }
 
+
             for (int i = 0;
                  i < array.length();
                  i++) {
@@ -1806,20 +2097,27 @@ public class MainActivity extends Activity {
                 JSONObject o =
                         array.getJSONObject(i);
 
+
                 String symbol =
-                        getString(
-                                o,
-                                "lVal18AFC",
-                                "lVal18",
-                                "symbol"
+                        cleanPersian(
+                                getString(
+                                        o,
+                                        "lVal18AFC",
+                                        "lVal18",
+                                        "symbol"
+                                )
                         );
 
+
                 String name =
-                        getString(
-                                o,
-                                "lVal30",
-                                "name"
+                        cleanPersian(
+                                getString(
+                                        o,
+                                        "lVal30",
+                                        "name"
+                                )
                         );
+
 
                 String code =
                         getString(
@@ -1828,8 +2126,10 @@ public class MainActivity extends Activity {
                                 "InsCode"
                         );
 
+
                 TextView tv =
                         new TextView(this);
+
 
                 tv.setText(
                         firstNonEmpty(
@@ -1837,21 +2137,21 @@ public class MainActivity extends Activity {
                                 "بدون نماد"
                         ) +
                         "\n" +
-                        firstNonEmpty(
-                                name,
-                                ""
-                        ) +
+                        name +
                         "\nکد: " +
                         code
                 );
 
+
                 tv.setTextSize(17);
+
                 tv.setPadding(
                         15,
                         15,
                         15,
                         15
                 );
+
 
                 content.addView(
                         tv,
@@ -1861,6 +2161,7 @@ public class MainActivity extends Activity {
                         )
                 );
             }
+
 
         } catch (Exception e) {
 
@@ -1873,57 +2174,63 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // تحلیل بنیادی
+    // Fundamental
     // =========================================================
 
     private void showFundamental() {
 
-        openPage("تحلیل بنیادی");
+        openPage(
+                "تحلیل بنیادی"
+        );
+
 
         addText(
                 "تحلیل بنیادی بورس‌یار"
         );
 
+
         addText(
-                "در این بخش معیارهای بنیادی نماد بررسی می‌شوند:"
+                "معیارهای بنیادی:"
         );
+
 
         addText(
                 "• EPS\n" +
                 "• P/E\n" +
                 "• ارزش بازار\n" +
                 "• سودآوری\n" +
-                "• وضعیت صنعت\n" +
-                "• رشد درآمد و سود"
+                "• رشد درآمد\n" +
+                "• وضعیت صنعت"
         );
 
-        addText(
-                "اطلاعات بنیادی برای هر نماد " +
-                "نیاز به دریافت اطلاعات اختصاصی همان نماد دارد."
-        );
 
         addText(
-                "در نسخه بعدی، اتصال مستقیم اطلاعات بنیادی " +
-                "و Codal تکمیل می‌شود."
+                "اتصال اطلاعات بنیادی و Codal " +
+                "در مرحله بعد تکمیل می‌شود."
         );
     }
 
 
     // =========================================================
-    // تحلیل تکنیکال
+    // Technical
     // =========================================================
 
     private void showTechnical() {
 
-        openPage("تحلیل تکنیکال");
+        openPage(
+                "تحلیل تکنیکال"
+        );
+
 
         addText(
                 "تحلیل تکنیکال بورس‌یار"
         );
 
+
         addText(
                 "شاخص‌های مورد استفاده:"
         );
+
 
         addText(
                 "• روند قیمت\n" +
@@ -1934,24 +2241,29 @@ public class MainActivity extends Activity {
                 "• حجم معاملات"
         );
 
+
         addText(
-                "برای تحلیل دقیق، ابتدا نماد را از بخش " +
-                "«بررسی نمادها» انتخاب کنید."
+                "در مرحله بعد محاسبات واقعی " +
+                "اندیکاتورها به برنامه اضافه می‌شود."
         );
     }
 
 
     // =========================================================
-    // پیشنهادهای معاملاتی
+    // Suggestions
     // =========================================================
 
     private void showSuggestions() {
 
-        openPage("پیشنهادهای معاملاتی");
+        openPage(
+                "پیشنهادهای معاملاتی"
+        );
+
 
         setStatus(
                 "در حال بررسی بازار..."
         );
+
 
         ensureMarketLoaded(
                 new Runnable() {
@@ -1965,51 +2277,31 @@ public class MainActivity extends Activity {
     }
 
 
-    // =========================================================
-    // نمایش پیشنهادها
-    // =========================================================
-
     private void displaySuggestions() {
 
         content.removeAllViews();
 
-        Button back = new Button(this);
+        addBackButton();
 
-        back.setText("←  بازگشت به منوی اصلی");
-        back.setAllCaps(false);
-
-        back.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        buildMainMenu();
-                    }
-                }
-        );
-
-        content.addView(
-                back,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        60
-                )
-        );
 
         addText(
                 "پیشنهادهای معاملاتی"
         );
 
+
         addText(
-                "این فهرست صرفاً بر اساس داده‌های لحظه‌ای " +
-                "بازار مرتب شده و به معنی توصیه قطعی خرید یا فروش نیست."
+                "این فهرست صرفاً بر اساس داده‌های فعلی بازار مرتب شده و توصیه قطعی خرید یا فروش نیست."
         );
+
 
         addText(
                 "────────────────────"
         );
 
+
         List<MarketItem> candidates =
                 new ArrayList<>();
+
 
         for (MarketItem item :
                 marketItems) {
@@ -2018,10 +2310,6 @@ public class MainActivity extends Activity {
                 continue;
             }
 
-            if (item.last <= 0 &&
-                    item.close <= 0) {
-                continue;
-            }
 
             if (item.percent >= 0 &&
                     item.percent <= 5) {
@@ -2029,6 +2317,7 @@ public class MainActivity extends Activity {
                 candidates.add(item);
             }
         }
+
 
         Collections.sort(
                 candidates,
@@ -2046,7 +2335,9 @@ public class MainActivity extends Activity {
                 }
         );
 
+
         int count = 0;
+
 
         for (MarketItem item :
                 candidates) {
@@ -2055,17 +2346,59 @@ public class MainActivity extends Activity {
                 break;
             }
 
+
             addMarketRow(item);
 
             count++;
         }
 
+
         if (count == 0) {
 
             addText(
-                    "در حال حاضر داده مناسب برای نمایش پیشنهاد وجود ندارد."
+                    "داده مناسب پیدا نشد."
             );
         }
+    }
+
+
+    // =========================================================
+    // Back
+    // =========================================================
+
+    private void addBackButton() {
+
+        Button back =
+                new Button(this);
+
+
+        back.setText(
+                "←  بازگشت به منوی اصلی"
+        );
+
+
+        back.setTextSize(17);
+
+        back.setAllCaps(false);
+
+
+        back.setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        buildMainMenu();
+                    }
+                }
+        );
+
+
+        content.addView(
+                back,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        60
+                )
+        );
     }
 
 
@@ -2077,30 +2410,45 @@ public class MainActivity extends Activity {
             String urlString)
             throws Exception {
 
-        HttpURLConnection connection = null;
+        HttpURLConnection connection =
+                null;
+
 
         try {
 
             URL url =
                     new URL(urlString);
 
+
             connection =
                     (HttpURLConnection)
                             url.openConnection();
 
-            connection.setRequestMethod("GET");
+
+            connection.setRequestMethod(
+                    "GET"
+            );
+
 
             connection.setConnectTimeout(
                     25000
             );
 
+
             connection.setReadTimeout(
                     30000
             );
 
-            connection.setUseCaches(false);
 
-            connection.setDoInput(true);
+            connection.setUseCaches(
+                    false
+            );
+
+
+            connection.setDoInput(
+                    true
+            );
+
 
             connection.setRequestProperty(
                     "User-Agent",
@@ -2110,20 +2458,25 @@ public class MainActivity extends Activity {
                     "Chrome/140.0 Safari/537.36"
             );
 
+
             connection.setRequestProperty(
                     "Accept",
                     "application/json,text/plain,*/*"
             );
+
 
             connection.setRequestProperty(
                     "Accept-Language",
                     "fa-IR,fa;q=0.9,en;q=0.8"
             );
 
+
             int code =
                     connection.getResponseCode();
 
+
             InputStream stream;
+
 
             if (code >= 200 &&
                     code < 400) {
@@ -2136,10 +2489,12 @@ public class MainActivity extends Activity {
                 stream =
                         connection.getErrorStream();
 
+
                 String error =
                         stream != null
                                 ? readStream(stream)
                                 : "";
+
 
                 throw new Exception(
                         "HTTP " +
@@ -2149,8 +2504,10 @@ public class MainActivity extends Activity {
                 );
             }
 
+
             String result =
                     readStream(stream);
+
 
             if (result == null ||
                     result.trim().length() == 0) {
@@ -2160,12 +2517,12 @@ public class MainActivity extends Activity {
                 );
             }
 
-            // اگر پاسخ HTML باشد، یعنی API احتمالاً
-            // مسدود یا Redirect شده است.
+
             String lower =
                     result.toLowerCase(
                             Locale.US
                     );
+
 
             if (lower.contains("<html") ||
                     lower.contains("<!doctype")) {
@@ -2175,11 +2532,14 @@ public class MainActivity extends Activity {
                 );
             }
 
+
             return result;
+
 
         } finally {
 
             if (connection != null) {
+
                 connection.disconnect();
             }
         }
@@ -2187,7 +2547,7 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // خواندن Stream
+    // Read Stream
     // =========================================================
 
     private String readStream(
@@ -2198,6 +2558,7 @@ public class MainActivity extends Activity {
             return "";
         }
 
+
         BufferedReader reader =
                 new BufferedReader(
                         new InputStreamReader(
@@ -2206,10 +2567,13 @@ public class MainActivity extends Activity {
                         )
                 );
 
+
         StringBuilder builder =
                 new StringBuilder();
 
+
         String line;
+
 
         while ((line =
                 reader.readLine()) != null) {
@@ -2217,7 +2581,9 @@ public class MainActivity extends Activity {
             builder.append(line);
         }
 
+
         reader.close();
+
 
         return builder.toString();
     }
@@ -2240,11 +2606,13 @@ public class MainActivity extends Activity {
                                     return new X509Certificate[0];
                                 }
 
+
                                 @Override
                                 public void checkClientTrusted(
                                         X509Certificate[] chain,
                                         String authType) {
                                 }
+
 
                                 @Override
                                 public void checkServerTrusted(
@@ -2254,8 +2622,12 @@ public class MainActivity extends Activity {
                             }
                     };
 
+
             SSLContext sslContext =
-                    SSLContext.getInstance("TLS");
+                    SSLContext.getInstance(
+                            "TLS"
+                    );
+
 
             sslContext.init(
                     null,
@@ -2263,9 +2635,11 @@ public class MainActivity extends Activity {
                     new SecureRandom()
             );
 
+
             HttpsURLConnection.setDefaultSSLSocketFactory(
                     sslContext.getSocketFactory()
             );
+
 
             HostnameVerifier verifier =
                     new HostnameVerifier() {
@@ -2275,22 +2649,86 @@ public class MainActivity extends Activity {
                                 String hostname,
                                 SSLSession session) {
 
-                            if (hostname == null) {
-                                return false;
-                            }
-
-                            return hostname.equals(
-                                    "cdn.tsetmc.com"
-                            );
+                            return hostname != null &&
+                                    hostname.equals(
+                                            "cdn.tsetmc.com"
+                                    );
                         }
                     };
+
 
             HttpsURLConnection.setDefaultHostnameVerifier(
                     verifier
             );
 
+
         } catch (Exception ignored) {
         }
+    }
+
+
+    // =========================================================
+    // Find JSON Array
+    // =========================================================
+
+    private JSONArray findArray(
+            JSONObject object,
+            String... keys) {
+
+        if (object == null) {
+            return null;
+        }
+
+
+        for (String key :
+                keys) {
+
+            try {
+
+                if (!object.has(key) ||
+                        object.isNull(key)) {
+
+                    continue;
+                }
+
+
+                Object value =
+                        object.get(key);
+
+
+                if (value instanceof JSONArray) {
+
+                    return (JSONArray) value;
+                }
+
+
+                if (value instanceof JSONObject) {
+
+                    JSONArray nested =
+                            findArray(
+                                    (JSONObject) value,
+                                    "data",
+                                    "items",
+                                    "marketwatch",
+                                    "marketWatch",
+                                    "clientTypeAllDto",
+                                    "clientType",
+                                    "result"
+                            );
+
+
+                    if (nested != null) {
+                        return nested;
+                    }
+                }
+
+
+            } catch (Exception ignored) {
+            }
+        }
+
+
+        return null;
     }
 
 
@@ -2299,29 +2737,35 @@ public class MainActivity extends Activity {
     // =========================================================
 
     private String getString(
-            JSONObject o,
+            JSONObject object,
             String... keys) {
 
-        if (o == null) {
+        if (object == null) {
             return "";
         }
 
-        for (String key : keys) {
+
+        for (String key :
+                keys) {
 
             try {
 
-                if (!o.has(key) ||
-                        o.isNull(key)) {
+                if (!object.has(key) ||
+                        object.isNull(key)) {
+
                     continue;
                 }
 
+
                 Object value =
-                        o.get(key);
+                        object.get(key);
+
 
                 if (value instanceof JSONObject) {
 
                     JSONObject child =
                             (JSONObject) value;
+
 
                     if (child.has("value")) {
 
@@ -2329,6 +2773,7 @@ public class MainActivity extends Activity {
                                 child.get("value")
                         );
                     }
+
 
                     if (child.has("Value")) {
 
@@ -2338,18 +2783,24 @@ public class MainActivity extends Activity {
                     }
                 }
 
-                String s =
+
+                String result =
                         String.valueOf(value);
 
-                if (s.length() > 0 &&
-                        !"null".equalsIgnoreCase(s)) {
 
-                    return s;
+                if (!result.equalsIgnoreCase(
+                        "null"
+                ) &&
+                        result.trim().length() > 0) {
+
+                    return result;
                 }
+
 
             } catch (Exception ignored) {
             }
         }
+
 
         return "";
     }
@@ -2360,29 +2811,35 @@ public class MainActivity extends Activity {
     // =========================================================
 
     private double getDouble(
-            JSONObject o,
+            JSONObject object,
             String... keys) {
 
-        if (o == null) {
+        if (object == null) {
             return 0;
         }
 
-        for (String key : keys) {
+
+        for (String key :
+                keys) {
 
             try {
 
-                if (!o.has(key) ||
-                        o.isNull(key)) {
+                if (!object.has(key) ||
+                        object.isNull(key)) {
+
                     continue;
                 }
 
+
                 Object value =
-                        o.get(key);
+                        object.get(key);
+
 
                 if (value instanceof JSONObject) {
 
                     JSONObject child =
                             (JSONObject) value;
+
 
                     if (child.has("value")) {
 
@@ -2397,33 +2854,235 @@ public class MainActivity extends Activity {
                     }
                 }
 
+
                 if (value instanceof Number) {
 
                     return ((Number) value)
                             .doubleValue();
                 }
 
+
                 String s =
-                        String.valueOf(value)
-                                .replace(",", "")
-                                .trim();
+                        normalizeDigits(
+                                String.valueOf(value)
+                        );
+
+
+                s =
+                        s.replace(
+                                ",",
+                                ""
+                        ).trim();
+
 
                 if (s.length() == 0) {
                     continue;
                 }
 
+
                 return Double.parseDouble(s);
+
 
             } catch (Exception ignored) {
             }
         }
+
 
         return 0;
     }
 
 
     // =========================================================
-    // اولین مقدار غیرخالی
+    // Normalize Persian Digits
+    // =========================================================
+
+    private String normalizeDigits(
+            String value) {
+
+        if (value == null) {
+            return "";
+        }
+
+
+        StringBuilder result =
+                new StringBuilder();
+
+
+        for (int i = 0;
+             i < value.length();
+             i++) {
+
+            char c =
+                    value.charAt(i);
+
+
+            switch (c) {
+
+                case '۰':
+                    result.append('0');
+                    break;
+
+                case '۱':
+                    result.append('1');
+                    break;
+
+                case '۲':
+                    result.append('2');
+                    break;
+
+                case '۳':
+                    result.append('3');
+                    break;
+
+                case '۴':
+                    result.append('4');
+                    break;
+
+                case '۵':
+                    result.append('5');
+                    break;
+
+                case '۶':
+                    result.append('6');
+                    break;
+
+                case '۷':
+                    result.append('7');
+                    break;
+
+                case '۸':
+                    result.append('8');
+                    break;
+
+                case '۹':
+                    result.append('9');
+                    break;
+
+                case '٠':
+                    result.append('0');
+                    break;
+
+                case '١':
+                    result.append('1');
+                    break;
+
+                case '٢':
+                    result.append('2');
+                    break;
+
+                case '٣':
+                    result.append('3');
+                    break;
+
+                case '٤':
+                    result.append('4');
+                    break;
+
+                case '٥':
+                    result.append('5');
+                    break;
+
+                case '٦':
+                    result.append('6');
+                    break;
+
+                case '٧':
+                    result.append('7');
+                    break;
+
+                case '٨':
+                    result.append('8');
+                    break;
+
+                case '٩':
+                    result.append('9');
+                    break;
+
+                default:
+                    result.append(c);
+            }
+        }
+
+
+        return result.toString();
+    }
+
+
+    // =========================================================
+    // Persian Normalize
+    // =========================================================
+
+    private String cleanPersian(
+            String value) {
+
+        if (value == null) {
+            return "";
+        }
+
+
+        String result =
+                value.trim();
+
+
+        result =
+                result.replace(
+                        'ي',
+                        'ی'
+                );
+
+
+        result =
+                result.replace(
+                        'ى',
+                        'ی'
+                );
+
+
+        result =
+                result.replace(
+                        'ك',
+                        'ک'
+                );
+
+
+        result =
+                result.replace(
+                        'ۀ',
+                        'ه'
+                );
+
+
+        result =
+                result.replace(
+                        '\u200C',
+                        '‌'
+                );
+
+
+        return result;
+    }
+
+
+    // =========================================================
+    // InsCode Normalize
+    // =========================================================
+
+    private String cleanInsCode(
+            String value) {
+
+        if (value == null) {
+            return "";
+        }
+
+
+        return normalizeDigits(
+                value.trim()
+        );
+    }
+
+
+    // =========================================================
+    // First Non Empty
     // =========================================================
 
     private String firstNonEmpty(
@@ -2433,21 +3092,24 @@ public class MainActivity extends Activity {
             return "";
         }
 
-        for (String value : values) {
+
+        for (String value :
+                values) {
 
             if (value != null &&
                     value.trim().length() > 0) {
 
-                return value;
+                return value.trim();
             }
         }
+
 
         return "";
     }
 
 
     // =========================================================
-    // فرمت عدد
+    // Number
     // =========================================================
 
     private String formatNumber(
@@ -2459,17 +3121,19 @@ public class MainActivity extends Activity {
             return "0";
         }
 
+
         DecimalFormat df =
                 new DecimalFormat(
                         "#,###"
                 );
+
 
         return df.format(value);
     }
 
 
     // =========================================================
-    // فرمت درصد
+    // Percent
     // =========================================================
 
     private String formatPercent(
@@ -2484,7 +3148,7 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // خطای خوانا
+    // Error
     // =========================================================
 
     private String getReadableError(
@@ -2494,8 +3158,10 @@ public class MainActivity extends Activity {
             return "خطای نامشخص";
         }
 
+
         String msg =
                 e.getMessage();
+
 
         if (msg == null ||
                 msg.length() == 0) {
@@ -2504,14 +3170,15 @@ public class MainActivity extends Activity {
                     e.toString();
         }
 
+
         if (msg.contains(
                 "Trust anchor"
         )) {
 
             return
-                    "خطای گواهی SSL/TLS.\n" +
-                    "اتصال امن TSETMC توسط گوشی تأیید نشد.";
+                    "خطای گواهی SSL/TLS.";
         }
+
 
         if (msg.contains(
                 "Unable to resolve host"
@@ -2521,13 +3188,17 @@ public class MainActivity extends Activity {
                     "اینترنت یا DNS در دسترس نیست.";
         }
 
-        if (msg.contains(
+
+        if (msg.toLowerCase(
+                Locale.US
+        ).contains(
                 "timed out"
         )) {
 
             return
                     "زمان اتصال به TSETMC تمام شد.";
         }
+
 
         if (msg.contains(
                 "HTTP 403"
@@ -2537,6 +3208,7 @@ public class MainActivity extends Activity {
                     "دسترسی TSETMC برای این اتصال رد شد.";
         }
 
+
         if (msg.contains(
                 "HTTP 429"
         )) {
@@ -2545,12 +3217,13 @@ public class MainActivity extends Activity {
                     "تعداد درخواست‌ها زیاد شده است. کمی بعد دوباره امتحان کنید.";
         }
 
+
         return msg;
     }
 
 
     // =========================================================
-    // مخفی کردن صفحه‌کلید
+    // Keyboard
     // =========================================================
 
     private void hideKeyboard() {
@@ -2562,6 +3235,7 @@ public class MainActivity extends Activity {
                             getSystemService(
                                     Context.INPUT_METHOD_SERVICE
                             );
+
 
             if (imm != null) {
 
@@ -2579,25 +3253,33 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // کلاس اطلاعات بازار
+    // Market Item
     // =========================================================
 
     private static class MarketItem {
 
         String insCode = "";
+
         String symbol = "";
+
         String name = "";
 
         double first = 0;
+
         double last = 0;
+
         double close = 0;
+
         double yesterday = 0;
 
         double min = 0;
+
         double max = 0;
 
         double volume = 0;
+
         double value = 0;
+
         double trades = 0;
 
         double percent = 0;
@@ -2605,21 +3287,35 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // کلاس پول حقیقی
+    // Money Item
     // =========================================================
 
     private static class MoneyItem {
 
         String insCode = "";
+
         String symbol = "";
 
         double buyIndividual = 0;
+
         double sellIndividual = 0;
 
         double buyValue = 0;
+
         double sellValue = 0;
 
+        double buyIndividualCount = 0;
+
+        double sellIndividualCount = 0;
+
         double netVolume = 0;
+
         double netValue = 0;
+
+        double price = 0;
+
+        double marketVolume = 0;
+
+        double percent = 0;
     }
 }
