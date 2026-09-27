@@ -33,6 +33,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -43,22 +45,28 @@ import javax.net.ssl.X509TrustManager;
 
 
 /*
+ * =========================================================
  * بورس‌یار
  *
- * نسخه اصلاح‌شده
+ * نسخه اصلاح‌شده Parser و اتصال TSETMC
  *
- * اصلاحات اصلی:
+ * اصلاحات این نسخه:
  *
- * 1- دریافت MarketWatch از TSETMC
- * 2- تطبیق دقیق insCode
- * 3- دریافت ClientTypeAll
- * 4- اصلاح نمایش نمادهای فارسی
- * 5- محاسبه خالص حجم پول حقیقی
- * 6- محاسبه خالص ارزش پول حقیقی
- * 7- رتبه‌بندی پول هوشمند بر اساس قدرت ورود پول
- * 8- تفکیک ورود و خروج پول
- * 9- مقاوم‌سازی JSON Parser
+ * 1- MarketWatch از TSETMC
+ * 2- اصلاح کامل فیلدهای قیمت
+ * 3- اصلاح درصد تغییر
+ * 4- اصلاح حجم، ارزش و تعداد معاملات
+ * 5- دریافت نام و نماد با InsCode
+ * 6- تطبیق دقیق InsCode
+ * 7- دریافت ClientTypeAll
+ * 8- محاسبه پول حقیقی
+ * 9- رتبه‌بندی پول هوشمند
+ * 10- ورود و خروج پول
+ * 11- اصلاح اعداد فارسی و عربی
+ * 12- جلوگیری از نمایش "بدون نماد" تا حد ممکن
+ * 13- مقاوم‌سازی JSON Parser
  *
+ * =========================================================
  */
 
 public class MainActivity extends Activity {
@@ -69,6 +77,7 @@ public class MainActivity extends Activity {
 
     private static final String BASE_URL =
             "https://cdn.tsetmc.com/api/";
+
 
     private static final String MARKET_URL =
             BASE_URL +
@@ -87,6 +96,7 @@ public class MainActivity extends Activity {
             "&hEven=0" +
             "&RefID=0";
 
+
     private static final String MONEY_URL =
             BASE_URL +
             "ClientType/GetClientTypeAll";
@@ -98,13 +108,11 @@ public class MainActivity extends Activity {
 
     private LinearLayout root;
     private LinearLayout content;
+
     private TextView titleText;
     private TextView statusText;
 
     private EditText searchBox;
-
-    private final Handler handler =
-            new Handler();
 
 
     // =========================================================
@@ -114,8 +122,21 @@ public class MainActivity extends Activity {
     private final List<MarketItem> marketItems =
             new ArrayList<>();
 
+
     private final List<MoneyItem> moneyItems =
             new ArrayList<>();
+
+
+    // =========================================================
+    // Thread
+    // =========================================================
+
+    private final Handler handler =
+            new Handler();
+
+
+    private final ExecutorService executor =
+            Executors.newFixedThreadPool(4);
 
 
     // =========================================================
@@ -123,7 +144,9 @@ public class MainActivity extends Activity {
     // =========================================================
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(
+            Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
 
         setupTsetmcSsl();
@@ -134,7 +157,14 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+
         handler.removeCallbacksAndMessages(null);
+
+        try {
+            executor.shutdownNow();
+        } catch (Exception ignored) {
+        }
+
         super.onDestroy();
     }
 
@@ -145,7 +175,8 @@ public class MainActivity extends Activity {
 
     private void buildMainMenu() {
 
-        root = new LinearLayout(this);
+        root =
+                new LinearLayout(this);
 
         root.setOrientation(
                 LinearLayout.VERTICAL
@@ -156,13 +187,16 @@ public class MainActivity extends Activity {
         );
 
 
-        titleText = new TextView(this);
+        titleText =
+                new TextView(this);
 
         titleText.setText(
                 "بورس‌یار"
         );
 
-        titleText.setTextSize(30);
+        titleText.setTextSize(
+                30
+        );
 
         titleText.setTypeface(
                 Typeface.DEFAULT,
@@ -184,6 +218,7 @@ public class MainActivity extends Activity {
                 20
         );
 
+
         root.addView(
                 titleText,
                 new LinearLayout.LayoutParams(
@@ -200,7 +235,9 @@ public class MainActivity extends Activity {
                 "دستیار تحلیل بازار سرمایه ایران"
         );
 
-        subtitle.setTextSize(16);
+        subtitle.setTextSize(
+                16
+        );
 
         subtitle.setGravity(
                 Gravity.CENTER
@@ -216,6 +253,7 @@ public class MainActivity extends Activity {
                 10,
                 20
         );
+
 
         root.addView(
                 subtitle,
@@ -342,9 +380,12 @@ public class MainActivity extends Activity {
                     public void onClick(View v) {
 
                         marketItems.clear();
+
                         moneyItems.clear();
 
-                        loadMarketData(true);
+                        loadMarketData(
+                                true
+                        );
                     }
                 }
         );
@@ -370,7 +411,11 @@ public class MainActivity extends Activity {
         button.setTextSize(18);
 
         button.setTextColor(
-                Color.rgb(30, 30, 30)
+                Color.rgb(
+                        30,
+                        30,
+                        30
+                )
         );
 
         button.setAllCaps(false);
@@ -379,11 +424,13 @@ public class MainActivity extends Activity {
                 Gravity.CENTER
         );
 
+
         LinearLayout.LayoutParams params =
                 new LinearLayout.LayoutParams(
                         -1,
                         65
                 );
+
 
         params.setMargins(
                 0,
@@ -392,9 +439,11 @@ public class MainActivity extends Activity {
                 8
         );
 
+
         button.setOnClickListener(
                 listener
         );
+
 
         content.addView(
                 button,
@@ -412,7 +461,12 @@ public class MainActivity extends Activity {
 
         content.removeAllViews();
 
-        titleText.setText(title);
+        statusText = null;
+
+        titleText.setText(
+                title
+        );
+
 
         Button back =
                 new Button(this);
@@ -421,18 +475,23 @@ public class MainActivity extends Activity {
                 "←  بازگشت به منوی اصلی"
         );
 
-        back.setTextSize(17);
+        back.setTextSize(
+                17
+        );
 
         back.setAllCaps(false);
+
 
         back.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
+
                         buildMainMenu();
                     }
                 }
         );
+
 
         content.addView(
                 back,
@@ -469,6 +528,7 @@ public class MainActivity extends Activity {
                 8
         );
 
+
         content.addView(
                 tv,
                 new LinearLayout.LayoutParams(
@@ -476,6 +536,7 @@ public class MainActivity extends Activity {
                         -2
                 )
         );
+
 
         return tv;
     }
@@ -488,16 +549,27 @@ public class MainActivity extends Activity {
     private void setStatus(
             String text) {
 
+        if (content == null) {
+            return;
+        }
+
+
         if (statusText == null ||
                 statusText.getParent() != content) {
 
             statusText =
                     new TextView(this);
 
-            statusText.setTextSize(17);
+            statusText.setTextSize(
+                    17
+            );
 
             statusText.setGravity(
                     Gravity.CENTER
+            );
+
+            statusText.setTextColor(
+                    Color.DKGRAY
             );
 
             statusText.setPadding(
@@ -507,18 +579,29 @@ public class MainActivity extends Activity {
                     15
             );
 
+
+            int index =
+                    Math.min(
+                            1,
+                            content.getChildCount()
+                    );
+
+
             content.addView(
                     statusText,
-                    1
+                    index
             );
         }
 
-        statusText.setText(text);
+
+        statusText.setText(
+                text
+        );
     }
 
 
     // =========================================================
-    // Market
+    // Market Overview
     // =========================================================
 
     private void showMarketOverview() {
@@ -527,58 +610,92 @@ public class MainActivity extends Activity {
                 "اطلاعات بازار"
         );
 
+
         setStatus(
                 "در حال دریافت اطلاعات بازار..."
         );
 
-        loadMarketData(false);
+
+        loadMarketData(
+                false
+        );
     }
 
+
+    // =========================================================
+    // Load Market
+    // =========================================================
 
     private void loadMarketData(
             final boolean returnToMenu) {
 
-        new Thread(
+        executor.execute(
                 new Runnable() {
+
                     @Override
                     public void run() {
 
                         try {
 
-                            String response =
+                            final String response =
                                     httpGet(
                                             MARKET_URL
                                     );
 
+
                             parseMarketWatch(
                                     response
                             );
+
+
+                            if (marketItems.isEmpty()) {
+
+                                runOnUiThread(
+                                        new Runnable() {
+                                            @Override
+                                            public void run() {
+
+                                                setStatus(
+                                                        "اطلاعات بازار دریافت نشد."
+                                                );
+                                            }
+                                        }
+                                );
+
+                                return;
+                            }
+
+
+                            /*
+                             * نام نمادها در MarketWatch
+                             * وجود ندارد.
+                             *
+                             * برای 50 نماد اول،
+                             * اطلاعات Instrument دریافت می‌شود.
+                             */
+
+                            enrichMarketSymbols(
+                                    50
+                            );
+
 
                             runOnUiThread(
                                     new Runnable() {
                                         @Override
                                         public void run() {
 
-                                            if (marketItems.isEmpty()) {
+                                            if (returnToMenu) {
 
-                                                setStatus(
-                                                        "اطلاعات بازار دریافت نشد."
-                                                );
+                                                showMarketResult();
 
                                             } else {
 
-                                                if (returnToMenu) {
-
-                                                    showMarketOverview();
-
-                                                } else {
-
-                                                    showMarketResult();
-                                                }
+                                                showMarketResult();
                                             }
                                         }
                                     }
                             );
+
 
                         } catch (final Exception e) {
 
@@ -597,7 +714,7 @@ public class MainActivity extends Activity {
                         }
                     }
                 }
-        ).start();
+        );
     }
 
 
@@ -611,16 +728,20 @@ public class MainActivity extends Activity {
 
         marketItems.clear();
 
+
         if (response == null ||
                 response.trim().length() == 0) {
 
             return;
         }
 
+
         String text =
                 response.trim();
 
+
         JSONArray array = null;
+
 
         if (text.startsWith("[")) {
 
@@ -631,6 +752,15 @@ public class MainActivity extends Activity {
 
             JSONObject object =
                     new JSONObject(text);
+
+
+            /*
+             * پاسخ صحیح TSETMC:
+             *
+             * {
+             *     "marketwatch":[ ... ]
+             * }
+             */
 
             array =
                     findArray(
@@ -644,12 +774,19 @@ public class MainActivity extends Activity {
                     );
         }
 
+
         if (array != null) {
 
-            parseMarketArray(array);
+            parseMarketArray(
+                    array
+            );
         }
     }
 
+
+    // =========================================================
+    // Market Array Parser
+    // =========================================================
 
     private void parseMarketArray(
             JSONArray array) {
@@ -657,6 +794,7 @@ public class MainActivity extends Activity {
         if (array == null) {
             return;
         }
+
 
         for (int i = 0;
              i < array.length();
@@ -667,9 +805,11 @@ public class MainActivity extends Activity {
                 Object object =
                         array.get(i);
 
+
                 if (!(object instanceof JSONObject)) {
                     continue;
                 }
+
 
                 JSONObject o =
                         (JSONObject) object;
@@ -679,63 +819,33 @@ public class MainActivity extends Activity {
                         new MarketItem();
 
 
+                // -------------------------------------------------
+                // InsCode
+                // -------------------------------------------------
+
                 item.insCode =
                         cleanInsCode(
-                                getString(
-                                        o,
-                                        "insCode",
-                                        "InsCode",
-                                        "instrumentId",
-                                        "instrumentID"
-                                )
-                        );
-
-
-                item.symbol =
-                        cleanPersian(
                                 firstNonEmpty(
                                         getString(
                                                 o,
-                                                "lVal18AFC"
+                                                "insCode"
                                         ),
                                         getString(
                                                 o,
-                                                "lVal18"
-                                        ),
-                                        getString(
-                                                o,
-                                                "symbol"
-                                        ),
-                                        getString(
-                                                o,
-                                                "symbolName"
+                                                "InsCode"
                                         )
                                 )
                         );
 
 
-                item.name =
-                        cleanPersian(
-                                firstNonEmpty(
-                                        getString(
-                                                o,
-                                                "lVal30"
-                                        ),
-                                        getString(
-                                                o,
-                                                "name"
-                                        ),
-                                        getString(
-                                                o,
-                                                "instrumentName"
-                                        ),
-                                        getString(
-                                                o,
-                                                "title"
-                                        )
-                                )
-                        );
+                if (item.insCode.length() == 0) {
+                    continue;
+                }
 
+
+                // -------------------------------------------------
+                // MarketWatch fields
+                // -------------------------------------------------
 
                 item.first =
                         getDouble(
@@ -824,45 +934,283 @@ public class MainActivity extends Activity {
                         );
 
 
-                double change =
+                // -------------------------------------------------
+                // درصد واقعی تغییر
+                //
+                // priceChange = اختلاف قیمت
+                // priceChangePercent = درصد
+                //
+                // اگر درصد آماده نبود،
+                // خودمان محاسبه می‌کنیم.
+                // -------------------------------------------------
+
+                double percent =
                         getDouble(
                                 o,
-                                "priceChange",
-                                "percent",
-                                "priceChangePercent"
+                                "priceChangePercent",
+                                "percentChange",
+                                "priceChangePct"
                         );
 
 
-                if (change == 0 &&
-                        item.yesterday != 0) {
+                double currentPrice =
+                        item.last != 0
+                                ? item.last
+                                : item.close;
 
-                    double price =
-                            item.last != 0
-                                    ? item.last
-                                    : item.close;
 
-                    if (price != 0) {
+                if (item.yesterday != 0 &&
+                        currentPrice != 0) {
 
-                        change =
-                                ((price -
-                                        item.yesterday)
-                                        /
-                                        item.yesterday)
-                                        * 100.0;
-                    }
+                    percent =
+                            (
+                                    (
+                                            currentPrice -
+                                                    item.yesterday
+                                    )
+                                            /
+                                            item.yesterday
+                            )
+                                    * 100.0;
                 }
 
 
                 item.percent =
-                        change;
+                        percent;
 
 
-                if (item.insCode.length() > 0) {
+                // -------------------------------------------------
+                // نماد در MarketWatch نیست.
+                // بعداً با InstrumentInfo تکمیل می‌شود.
+                // -------------------------------------------------
 
-                    marketItems.add(item);
-                }
+                item.symbol = "";
+
+                item.name = "";
+
+
+                marketItems.add(
+                        item
+                );
+
 
             } catch (Exception ignored) {
+            }
+        }
+    }
+
+
+    // =========================================================
+    // Enrich Market Symbols
+    // =========================================================
+
+    private void enrichMarketSymbols(
+            int maxCount) {
+
+        if (marketItems.isEmpty()) {
+            return;
+        }
+
+
+        /*
+         * اول بر اساس شدت تغییر مرتب می‌کنیم.
+         * فقط نمادهایی که قرار است نمایش داده شوند
+         * اطلاعات نامشان دریافت می‌شود.
+         */
+
+        Collections.sort(
+                marketItems,
+                new Comparator<MarketItem>() {
+
+                    @Override
+                    public int compare(
+                            MarketItem a,
+                            MarketItem b) {
+
+                        return Double.compare(
+                                Math.abs(b.percent),
+                                Math.abs(a.percent)
+                        );
+                    }
+                }
+        );
+
+
+        int count =
+                Math.min(
+                        maxCount,
+                        marketItems.size()
+                );
+
+
+        for (int i = 0;
+             i < count;
+             i++) {
+
+            MarketItem item =
+                    marketItems.get(i);
+
+
+            try {
+
+                loadInstrumentInfo(
+                        item
+                );
+
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+
+    // =========================================================
+    // Instrument Info
+    // =========================================================
+
+    private void loadInstrumentInfo(
+            MarketItem item)
+            throws Exception {
+
+        if (item == null ||
+                item.insCode.length() == 0) {
+
+            return;
+        }
+
+
+        String url =
+                BASE_URL +
+                "Instrument/GetInstrumentInfo/" +
+                item.insCode;
+
+
+        String response =
+                httpGet(url);
+
+
+        if (response == null ||
+                response.trim().length() == 0) {
+
+            return;
+        }
+
+
+        JSONObject object =
+                new JSONObject(
+                        response
+                );
+
+
+        JSONObject info =
+                null;
+
+
+        if (object.has(
+                "instrumentInfo"
+        )) {
+
+            Object value =
+                    object.get(
+                            "instrumentInfo"
+                    );
+
+
+            if (value instanceof JSONObject) {
+
+                info =
+                        (JSONObject) value;
+            }
+        }
+
+
+        if (info == null) {
+            return;
+        }
+
+
+        item.symbol =
+                cleanPersian(
+                        firstNonEmpty(
+                                getString(
+                                        info,
+                                        "lVal18AFC"
+                                ),
+                                getString(
+                                        info,
+                                        "lVal18"
+                                ),
+                                getString(
+                                        info,
+                                        "symbol"
+                                )
+                        )
+                );
+
+
+        item.name =
+                cleanPersian(
+                        firstNonEmpty(
+                                getString(
+                                        info,
+                                        "lVal30"
+                                ),
+                                getString(
+                                        info,
+                                        "name"
+                                ),
+                                getString(
+                                        info,
+                                        "instrumentName"
+                                )
+                        )
+                );
+
+
+        /*
+         * بعضی پاسخ‌ها اطلاعات Instrument
+         * را داخل ساختار دیگری قرار می‌دهند.
+         */
+
+        if (item.symbol.length() == 0) {
+
+            JSONObject instrument =
+                    getObject(
+                            info,
+                            "instrument",
+                            "Instrument"
+                    );
+
+
+            if (instrument != null) {
+
+                item.symbol =
+                        cleanPersian(
+                                firstNonEmpty(
+                                        getString(
+                                                instrument,
+                                                "lVal18AFC"
+                                        ),
+                                        getString(
+                                                instrument,
+                                                "lVal18"
+                                        )
+                                )
+                        );
+
+
+                item.name =
+                        cleanPersian(
+                                firstNonEmpty(
+                                        getString(
+                                                instrument,
+                                                "lVal30"
+                                        ),
+                                        getString(
+                                                instrument,
+                                                "name"
+                                        )
+                                )
+                        );
             }
         }
     }
@@ -876,14 +1224,22 @@ public class MainActivity extends Activity {
 
         content.removeAllViews();
 
+        statusText = null;
+
         addBackButton();
 
+
         int positive = 0;
+
         int negative = 0;
+
         int unchanged = 0;
 
+
         double volume = 0;
+
         double value = 0;
+
         double trades = 0;
 
 
@@ -903,9 +1259,17 @@ public class MainActivity extends Activity {
                 unchanged++;
             }
 
-            volume += item.volume;
-            value += item.value;
-            trades += item.trades;
+
+            volume +=
+                    item.volume;
+
+
+            value +=
+                    item.value;
+
+
+            trades +=
+                    item.trades;
         }
 
 
@@ -929,19 +1293,25 @@ public class MainActivity extends Activity {
 
         addText(
                 "حجم معاملات: " +
-                        formatNumber(volume)
+                        formatNumber(
+                                volume
+                        )
         );
 
 
         addText(
                 "ارزش معاملات: " +
-                        formatNumber(value)
+                        formatNumber(
+                                value
+                        )
         );
 
 
         addText(
                 "تعداد معاملات: " +
-                        formatNumber(trades)
+                        formatNumber(
+                                trades
+                        )
         );
 
 
@@ -953,6 +1323,7 @@ public class MainActivity extends Activity {
         Collections.sort(
                 marketItems,
                 new Comparator<MarketItem>() {
+
                     @Override
                     public int compare(
                             MarketItem a,
@@ -977,12 +1348,20 @@ public class MainActivity extends Activity {
                 break;
             }
 
-            addMarketRow(item);
+
+            addMarketRow(
+                    item
+            );
+
 
             count++;
         }
     }
 
+
+    // =========================================================
+    // Market Row
+    // =========================================================
 
     private void addMarketRow(
             MarketItem item) {
@@ -994,7 +1373,7 @@ public class MainActivity extends Activity {
         String symbol =
                 firstNonEmpty(
                         item.symbol,
-                        "نماد ناشناس"
+                        "نماد " + item.insCode
                 );
 
 
@@ -1006,33 +1385,74 @@ public class MainActivity extends Activity {
 
         String text =
                 symbol +
-                "    " +
-                formatPercent(
-                        item.percent
-                ) +
-                "\nقیمت: " +
-                formatNumber(price) +
-                "    دیروز: " +
-                formatNumber(
-                        item.yesterday
-                ) +
-                "\nحجم: " +
-                formatNumber(
-                        item.volume
-                ) +
-                "    ارزش: " +
-                formatNumber(
-                        item.value
-                ) +
-                "\nمعاملات: " +
-                formatNumber(
-                        item.trades
-                );
+                        "    " +
+                        formatPercent(
+                                item.percent
+                        ) +
+                        "\nقیمت: " +
+                        formatNumber(
+                                price
+                        ) +
+                        "    دیروز: " +
+                        formatNumber(
+                                item.yesterday
+                        ) +
+                        "\nحجم: " +
+                        formatNumber(
+                                item.volume
+                        ) +
+                        "    ارزش: " +
+                        formatNumber(
+                                item.value
+                        ) +
+                        "\nمعاملات: " +
+                        formatNumber(
+                                item.trades
+                        );
 
 
-        row.setText(text);
+        if (item.name.length() > 0) {
 
-        row.setTextSize(16);
+            text =
+                    symbol +
+                            " - " +
+                            item.name +
+                            "    " +
+                            formatPercent(
+                                    item.percent
+                            ) +
+                            "\nقیمت: " +
+                            formatNumber(
+                                    price
+                            ) +
+                            "    دیروز: " +
+                            formatNumber(
+                                    item.yesterday
+                            ) +
+                            "\nحجم: " +
+                            formatNumber(
+                                    item.volume
+                            ) +
+                            "    ارزش: " +
+                            formatNumber(
+                                    item.value
+                            ) +
+                            "\nمعاملات: " +
+                            formatNumber(
+                                    item.trades
+                            );
+        }
+
+
+        row.setText(
+                text
+        );
+
+
+        row.setTextSize(
+                16
+        );
+
 
         row.setPadding(
                 15,
@@ -1090,6 +1510,7 @@ public class MainActivity extends Activity {
                 "پول هوشمند"
         );
 
+
         setStatus(
                 "در حال دریافت اطلاعات بازار..."
         );
@@ -1097,13 +1518,20 @@ public class MainActivity extends Activity {
 
         ensureMarketLoaded(
                 new Runnable() {
+
                     @Override
                     public void run() {
 
                         loadMoneyData(
                                 new Runnable() {
+
                                     @Override
                                     public void run() {
+
+                                        enrichMoneySymbols(
+                                                50
+                                        );
+
 
                                         displaySmartMoney();
                                     }
@@ -1130,8 +1558,9 @@ public class MainActivity extends Activity {
         }
 
 
-        new Thread(
+        executor.execute(
                 new Runnable() {
+
                     @Override
                     public void run() {
 
@@ -1142,9 +1571,28 @@ public class MainActivity extends Activity {
                                             MARKET_URL
                                     );
 
+
                             parseMarketWatch(
                                     response
                             );
+
+
+                            if (marketItems.isEmpty()) {
+
+                                runOnUiThread(
+                                        new Runnable() {
+                                            @Override
+                                            public void run() {
+
+                                                setStatus(
+                                                        "اطلاعات بازار دریافت نشد."
+                                                );
+                                            }
+                                        }
+                                );
+
+                                return;
+                            }
 
 
                             runOnUiThread(
@@ -1152,19 +1600,11 @@ public class MainActivity extends Activity {
                                         @Override
                                         public void run() {
 
-                                            if (marketItems.isEmpty()) {
-
-                                                setStatus(
-                                                        "اطلاعات بازار دریافت نشد."
-                                                );
-
-                                            } else {
-
-                                                next.run();
-                                            }
+                                            next.run();
                                         }
                                     }
                             );
+
 
                         } catch (final Exception e) {
 
@@ -1183,7 +1623,7 @@ public class MainActivity extends Activity {
                         }
                     }
                 }
-        ).start();
+        );
     }
 
 
@@ -1194,8 +1634,9 @@ public class MainActivity extends Activity {
     private void loadMoneyData(
             final Runnable next) {
 
-        new Thread(
+        executor.execute(
                 new Runnable() {
+
                     @Override
                     public void run() {
 
@@ -1214,6 +1655,7 @@ public class MainActivity extends Activity {
 
                             runOnUiThread(
                                     new Runnable() {
+
                                         @Override
                                         public void run() {
 
@@ -1236,6 +1678,7 @@ public class MainActivity extends Activity {
 
                             runOnUiThread(
                                     new Runnable() {
+
                                         @Override
                                         public void run() {
 
@@ -1249,7 +1692,7 @@ public class MainActivity extends Activity {
                         }
                     }
                 }
-        ).start();
+        );
     }
 
 
@@ -1281,12 +1724,16 @@ public class MainActivity extends Activity {
         if (text.startsWith("[")) {
 
             array =
-                    new JSONArray(text);
+                    new JSONArray(
+                            text
+                    );
 
         } else {
 
             JSONObject object =
-                    new JSONObject(text);
+                    new JSONObject(
+                            text
+                    );
 
 
             array =
@@ -1331,10 +1778,15 @@ public class MainActivity extends Activity {
 
                 item.insCode =
                         cleanInsCode(
-                                getString(
-                                        o,
-                                        "insCode",
-                                        "InsCode"
+                                firstNonEmpty(
+                                        getString(
+                                                o,
+                                                "insCode"
+                                        ),
+                                        getString(
+                                                o,
+                                                "InsCode"
+                                        )
                                 )
                         );
 
@@ -1417,40 +1869,121 @@ public class MainActivity extends Activity {
                                     market.symbol
                             );
 
+
                     item.price =
                             market.last != 0
                                     ? market.last
                                     : market.close;
 
+
                     item.marketVolume =
                             market.volume;
 
+
                     item.percent =
                             market.percent;
-
-                } else {
-
-                    item.symbol =
-                            cleanPersian(
-                                    getString(
-                                            o,
-                                            "lVal18AFC",
-                                            "lVal18",
-                                            "symbol"
-                                    )
-                            );
                 }
 
 
                 if (item.symbol.length() == 0) {
 
                     item.symbol =
-                            "نماد " +
-                            item.insCode;
+                            "";
                 }
 
 
-                moneyItems.add(item);
+                moneyItems.add(
+                        item
+                );
+
+
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+
+    // =========================================================
+    // Enrich Money Symbols
+    // =========================================================
+
+    private void enrichMoneySymbols(
+            int maxCount) {
+
+        if (moneyItems.isEmpty()) {
+            return;
+        }
+
+
+        Collections.sort(
+                moneyItems,
+                new Comparator<MoneyItem>() {
+
+                    @Override
+                    public int compare(
+                            MoneyItem a,
+                            MoneyItem b) {
+
+                        return Double.compare(
+                                Math.abs(b.netValue),
+                                Math.abs(a.netValue)
+                        );
+                    }
+                }
+        );
+
+
+        int count =
+                Math.min(
+                        maxCount,
+                        moneyItems.size()
+                );
+
+
+        for (int i = 0;
+             i < count;
+             i++) {
+
+            MoneyItem money =
+                    moneyItems.get(i);
+
+
+            if (money.symbol.length() > 0) {
+                continue;
+            }
+
+
+            try {
+
+                MarketItem market =
+                        findMarketItem(
+                                money.insCode
+                        );
+
+
+                if (market != null) {
+
+                    if (market.symbol.length() == 0) {
+
+                        loadInstrumentInfo(
+                                market
+                        );
+                    }
+
+
+                    money.symbol =
+                            market.symbol;
+
+
+                    money.price =
+                            market.last != 0
+                                    ? market.last
+                                    : market.close;
+
+
+                    money.percent =
+                            market.percent;
+                }
 
 
             } catch (Exception ignored) {
@@ -1467,7 +2000,9 @@ public class MainActivity extends Activity {
             String insCode) {
 
         String target =
-                cleanInsCode(insCode);
+                cleanInsCode(
+                        insCode
+                );
 
 
         if (target.length() == 0) {
@@ -1501,6 +2036,8 @@ public class MainActivity extends Activity {
 
         content.removeAllViews();
 
+        statusText = null;
+
         addBackButton();
 
 
@@ -1516,7 +2053,7 @@ public class MainActivity extends Activity {
 
         addText(
                 "سبز = ورود پول حقیقی\n" +
-                "قرمز = خروج پول حقیقی"
+                        "قرمز = خروج پول حقیقی"
         );
 
 
@@ -1528,39 +2065,15 @@ public class MainActivity extends Activity {
         Collections.sort(
                 moneyItems,
                 new Comparator<MoneyItem>() {
+
                     @Override
                     public int compare(
                             MoneyItem a,
                             MoneyItem b) {
 
-                        double av =
-                                Math.abs(
-                                        a.netValue
-                                );
-
-                        double bv =
-                                Math.abs(
-                                        b.netValue
-                                );
-
-
-                        if (av == 0 &&
-                                bv == 0) {
-
-                            return Double.compare(
-                                    Math.abs(
-                                            b.netVolume
-                                    ),
-                                    Math.abs(
-                                            a.netVolume
-                                    )
-                            );
-                        }
-
-
                         return Double.compare(
-                                bv,
-                                av
+                                Math.abs(b.netValue),
+                                Math.abs(a.netValue)
                         );
                     }
                 }
@@ -1618,6 +2131,13 @@ public class MainActivity extends Activity {
                 new TextView(this);
 
 
+        String symbol =
+                firstNonEmpty(
+                        item.symbol,
+                        "نماد " + item.insCode
+                );
+
+
         String direction;
 
 
@@ -1644,25 +2164,29 @@ public class MainActivity extends Activity {
 
 
         String text =
-                item.symbol +
-                "\n" +
-                direction +
-                "\nخالص ارزش: " +
-                formatNumber(
-                        item.netValue
-                ) +
-                "\nخالص حجم: " +
-                formatNumber(
-                        item.netVolume
-                ) +
-                "\nخرید حقیقی: " +
-                formatNumber(
-                        item.buyIndividual
-                ) +
-                "    فروش حقیقی: " +
-                formatNumber(
-                        item.sellIndividual
-                );
+                symbol +
+                        "    " +
+                        formatPercent(
+                                item.percent
+                        ) +
+                        "\n" +
+                        direction +
+                        "\nخالص ارزش: " +
+                        formatNumber(
+                                item.netValue
+                        ) +
+                        "\nخالص حجم: " +
+                        formatNumber(
+                                item.netVolume
+                        ) +
+                        "\nخرید حقیقی: " +
+                        formatNumber(
+                                item.buyIndividual
+                        ) +
+                        "    فروش حقیقی: " +
+                        formatNumber(
+                                item.sellIndividual
+                        );
 
 
         if (item.buyIndividualCount != 0 ||
@@ -1670,19 +2194,25 @@ public class MainActivity extends Activity {
 
             text +=
                     "\nتعداد خریدار حقیقی: " +
-                    formatNumber(
-                            item.buyIndividualCount
-                    ) +
-                    "    فروشنده حقیقی: " +
-                    formatNumber(
-                            item.sellIndividualCount
-                    );
+                            formatNumber(
+                                    item.buyIndividualCount
+                            ) +
+                            "    فروشنده حقیقی: " +
+                            formatNumber(
+                                    item.sellIndividualCount
+                            );
         }
 
 
-        row.setText(text);
+        row.setText(
+                text
+        );
 
-        row.setTextSize(16);
+
+        row.setTextSize(
+                16
+        );
+
 
         row.setPadding(
                 15,
@@ -1693,8 +2223,10 @@ public class MainActivity extends Activity {
 
 
         if (item.netValue > 0 ||
-                (item.netValue == 0 &&
-                        item.netVolume > 0)) {
+                (
+                        item.netValue == 0 &&
+                                item.netVolume > 0
+                )) {
 
             row.setTextColor(
                     Color.rgb(
@@ -1744,13 +2276,20 @@ public class MainActivity extends Activity {
 
         ensureMarketLoaded(
                 new Runnable() {
+
                     @Override
                     public void run() {
 
                         loadMoneyData(
                                 new Runnable() {
+
                                     @Override
                                     public void run() {
+
+                                        enrichMoneySymbols(
+                                                30
+                                        );
+
 
                                         displayMoneyFlow();
                                     }
@@ -1762,17 +2301,25 @@ public class MainActivity extends Activity {
     }
 
 
+    // =========================================================
+    // Display Money Flow
+    // =========================================================
+
     private void displayMoneyFlow() {
 
         content.removeAllViews();
+
+        statusText = null;
 
         addBackButton();
 
 
         double buy = 0;
+
         double sell = 0;
 
         double buyValue = 0;
+
         double sellValue = 0;
 
 
@@ -1782,11 +2329,14 @@ public class MainActivity extends Activity {
             buy +=
                     item.buyIndividual;
 
+
             sell +=
                     item.sellIndividual;
 
+
             buyValue +=
                     item.buyValue;
+
 
             sellValue +=
                     item.sellValue;
@@ -1794,34 +2344,44 @@ public class MainActivity extends Activity {
 
 
         double netVolume =
-                buy - sell;
+                buy -
+                        sell;
 
 
         double netValue =
-                buyValue - sellValue;
+                buyValue -
+                        sellValue;
 
 
         addText(
                 "خرید حقیقی: " +
-                        formatNumber(buy)
+                        formatNumber(
+                                buy
+                        )
         );
 
 
         addText(
                 "فروش حقیقی: " +
-                        formatNumber(sell)
+                        formatNumber(
+                                sell
+                        )
         );
 
 
         addText(
                 "خالص حجم: " +
-                        formatNumber(netVolume)
+                        formatNumber(
+                                netVolume
+                        )
         );
 
 
         addText(
                 "خالص ارزش پول حقیقی: " +
-                        formatNumber(netValue)
+                        formatNumber(
+                                netValue
+                        )
         );
 
 
@@ -1841,18 +2401,15 @@ public class MainActivity extends Activity {
         Collections.sort(
                 moneyItems,
                 new Comparator<MoneyItem>() {
+
                     @Override
                     public int compare(
                             MoneyItem a,
                             MoneyItem b) {
 
                         return Double.compare(
-                                Math.abs(
-                                        b.netValue
-                                ),
-                                Math.abs(
-                                        a.netValue
-                                )
+                                Math.abs(b.netValue),
+                                Math.abs(a.netValue)
                         );
                     }
                 }
@@ -1881,7 +2438,10 @@ public class MainActivity extends Activity {
             }
 
 
-            addSmartMoneyRow(item);
+            addSmartMoneyRow(
+                    item
+            );
+
 
             count++;
         }
@@ -1902,11 +2462,15 @@ public class MainActivity extends Activity {
         searchBox =
                 new EditText(this);
 
+
         searchBox.setHint(
                 "نام نماد؛ مثلا فولاد"
         );
 
-        searchBox.setTextSize(17);
+
+        searchBox.setTextSize(
+                17
+        );
 
 
         content.addView(
@@ -1921,17 +2485,23 @@ public class MainActivity extends Activity {
         Button search =
                 new Button(this);
 
+
         search.setText(
                 "جستجوی نماد"
         );
 
-        search.setTextSize(17);
+
+        search.setTextSize(
+                17
+        );
+
 
         search.setAllCaps(false);
 
 
         search.setOnClickListener(
                 new View.OnClickListener() {
+
                     @Override
                     public void onClick(View v) {
 
@@ -1950,13 +2520,17 @@ public class MainActivity extends Activity {
                                     Toast.LENGTH_SHORT
                             ).show();
 
+
                             return;
                         }
 
 
                         hideKeyboard();
 
-                        searchSymbol(q);
+
+                        searchSymbol(
+                                q
+                        );
                     }
                 }
         );
@@ -1977,6 +2551,10 @@ public class MainActivity extends Activity {
     }
 
 
+    // =========================================================
+    // Search
+    // =========================================================
+
     private void searchSymbol(
             final String query) {
 
@@ -1987,8 +2565,9 @@ public class MainActivity extends Activity {
         );
 
 
-        new Thread(
+        executor.execute(
                 new Runnable() {
+
                     @Override
                     public void run() {
 
@@ -2008,11 +2587,14 @@ public class MainActivity extends Activity {
 
 
                             final String response =
-                                    httpGet(url);
+                                    httpGet(
+                                            url
+                                    );
 
 
                             runOnUiThread(
                                     new Runnable() {
+
                                         @Override
                                         public void run() {
 
@@ -2028,6 +2610,7 @@ public class MainActivity extends Activity {
 
                             runOnUiThread(
                                     new Runnable() {
+
                                         @Override
                                         public void run() {
 
@@ -2041,14 +2624,20 @@ public class MainActivity extends Activity {
                         }
                     }
                 }
-        ).start();
+        );
     }
 
+
+    // =========================================================
+    // Search Result
+    // =========================================================
 
     private void displaySearchResult(
             String response) {
 
         content.removeAllViews();
+
+        statusText = null;
 
         addBackButton();
 
@@ -2061,12 +2650,17 @@ public class MainActivity extends Activity {
             if (response.trim().startsWith("[")) {
 
                 array =
-                        new JSONArray(response);
+                        new JSONArray(
+                                response
+                        );
 
             } else {
 
                 JSONObject object =
-                        new JSONObject(response);
+                        new JSONObject(
+                                response
+                        );
+
 
                 array =
                         findArray(
@@ -2085,6 +2679,7 @@ public class MainActivity extends Activity {
                 addText(
                         "نمادی پیدا نشد."
                 );
+
 
                 return;
             }
@@ -2120,10 +2715,12 @@ public class MainActivity extends Activity {
 
 
                 String code =
-                        getString(
-                                o,
-                                "insCode",
-                                "InsCode"
+                        cleanInsCode(
+                                getString(
+                                        o,
+                                        "insCode",
+                                        "InsCode"
+                                )
                         );
 
 
@@ -2136,14 +2733,17 @@ public class MainActivity extends Activity {
                                 symbol,
                                 "بدون نماد"
                         ) +
-                        "\n" +
-                        name +
-                        "\nکد: " +
-                        code
+                                "\n" +
+                                name +
+                                "\nکد: " +
+                                code
                 );
 
 
-                tv.setTextSize(17);
+                tv.setTextSize(
+                        17
+                );
+
 
                 tv.setPadding(
                         15,
@@ -2167,7 +2767,7 @@ public class MainActivity extends Activity {
 
             addText(
                     "خطا در خواندن نتیجه جستجو\n\n" +
-                    getReadableError(e)
+                            getReadableError(e)
             );
         }
     }
@@ -2196,17 +2796,17 @@ public class MainActivity extends Activity {
 
         addText(
                 "• EPS\n" +
-                "• P/E\n" +
-                "• ارزش بازار\n" +
-                "• سودآوری\n" +
-                "• رشد درآمد\n" +
-                "• وضعیت صنعت"
+                        "• P/E\n" +
+                        "• ارزش بازار\n" +
+                        "• سودآوری\n" +
+                        "• رشد درآمد\n" +
+                        "• وضعیت صنعت"
         );
 
 
         addText(
                 "اتصال اطلاعات بنیادی و Codal " +
-                "در مرحله بعد تکمیل می‌شود."
+                        "در مرحله بعد تکمیل می‌شود."
         );
     }
 
@@ -2234,17 +2834,17 @@ public class MainActivity extends Activity {
 
         addText(
                 "• روند قیمت\n" +
-                "• میانگین متحرک\n" +
-                "• RSI\n" +
-                "• MACD\n" +
-                "• حمایت و مقاومت\n" +
-                "• حجم معاملات"
+                        "• میانگین متحرک\n" +
+                        "• RSI\n" +
+                        "• MACD\n" +
+                        "• حمایت و مقاومت\n" +
+                        "• حجم معاملات"
         );
 
 
         addText(
                 "در مرحله بعد محاسبات واقعی " +
-                "اندیکاتورها به برنامه اضافه می‌شود."
+                        "اندیکاتورها به برنامه اضافه می‌شود."
         );
     }
 
@@ -2267,8 +2867,14 @@ public class MainActivity extends Activity {
 
         ensureMarketLoaded(
                 new Runnable() {
+
                     @Override
                     public void run() {
+
+                        enrichMarketSymbols(
+                                20
+                        );
+
 
                         displaySuggestions();
                     }
@@ -2277,9 +2883,15 @@ public class MainActivity extends Activity {
     }
 
 
+    // =========================================================
+    // Suggestions Display
+    // =========================================================
+
     private void displaySuggestions() {
 
         content.removeAllViews();
+
+        statusText = null;
 
         addBackButton();
 
@@ -2314,7 +2926,9 @@ public class MainActivity extends Activity {
             if (item.percent >= 0 &&
                     item.percent <= 5) {
 
-                candidates.add(item);
+                candidates.add(
+                        item
+                );
             }
         }
 
@@ -2322,6 +2936,7 @@ public class MainActivity extends Activity {
         Collections.sort(
                 candidates,
                 new Comparator<MarketItem>() {
+
                     @Override
                     public int compare(
                             MarketItem a,
@@ -2347,7 +2962,10 @@ public class MainActivity extends Activity {
             }
 
 
-            addMarketRow(item);
+            addMarketRow(
+                    item
+            );
+
 
             count++;
         }
@@ -2377,15 +2995,20 @@ public class MainActivity extends Activity {
         );
 
 
-        back.setTextSize(17);
+        back.setTextSize(
+                17
+        );
+
 
         back.setAllCaps(false);
 
 
         back.setOnClickListener(
                 new View.OnClickListener() {
+
                     @Override
                     public void onClick(View v) {
+
                         buildMainMenu();
                     }
                 }
@@ -2417,7 +3040,9 @@ public class MainActivity extends Activity {
         try {
 
             URL url =
-                    new URL(urlString);
+                    new URL(
+                            urlString
+                    );
 
 
             connection =
@@ -2453,9 +3078,9 @@ public class MainActivity extends Activity {
             connection.setRequestProperty(
                     "User-Agent",
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-                    "AppleWebKit/537.36 " +
-                    "(KHTML, like Gecko) " +
-                    "Chrome/140.0 Safari/537.36"
+                            "AppleWebKit/537.36 " +
+                            "(KHTML, like Gecko) " +
+                            "Chrome/140.0 Safari/537.36"
             );
 
 
@@ -2498,15 +3123,17 @@ public class MainActivity extends Activity {
 
                 throw new Exception(
                         "HTTP " +
-                        code +
-                        "\n" +
-                        error
+                                code +
+                                "\n" +
+                                error
                 );
             }
 
 
             String result =
-                    readStream(stream);
+                    readStream(
+                            stream
+                    );
 
 
             if (result == null ||
@@ -2524,8 +3151,12 @@ public class MainActivity extends Activity {
                     );
 
 
-            if (lower.contains("<html") ||
-                    lower.contains("<!doctype")) {
+            if (lower.contains(
+                    "<html"
+            ) ||
+                    lower.contains(
+                            "<!doctype"
+                    )) {
 
                 throw new Exception(
                         "TSETMC به جای JSON صفحه HTML برگرداند."
@@ -2575,10 +3206,15 @@ public class MainActivity extends Activity {
         String line;
 
 
-        while ((line =
-                reader.readLine()) != null) {
+        while (
+                (line =
+                        reader.readLine())
+                        != null
+        ) {
 
-            builder.append(line);
+            builder.append(
+                    line
+            );
         }
 
 
@@ -2603,6 +3239,7 @@ public class MainActivity extends Activity {
 
                                 @Override
                                 public X509Certificate[] getAcceptedIssuers() {
+
                                     return new X509Certificate[0];
                                 }
 
@@ -2693,7 +3330,9 @@ public class MainActivity extends Activity {
 
 
                 Object value =
-                        object.get(key);
+                        object.get(
+                                key
+                        );
 
 
                 if (value instanceof JSONArray) {
@@ -2713,6 +3352,7 @@ public class MainActivity extends Activity {
                                     "marketWatch",
                                     "clientTypeAllDto",
                                     "clientType",
+                                    "instrumentSearch",
                                     "result"
                             );
 
@@ -2720,6 +3360,52 @@ public class MainActivity extends Activity {
                     if (nested != null) {
                         return nested;
                     }
+                }
+
+
+            } catch (Exception ignored) {
+            }
+        }
+
+
+        return null;
+    }
+
+
+    // =========================================================
+    // JSON Object
+    // =========================================================
+
+    private JSONObject getObject(
+            JSONObject object,
+            String... keys) {
+
+        if (object == null) {
+            return null;
+        }
+
+
+        for (String key :
+                keys) {
+
+            try {
+
+                if (!object.has(key) ||
+                        object.isNull(key)) {
+
+                    continue;
+                }
+
+
+                Object value =
+                        object.get(
+                                key
+                        );
+
+
+                if (value instanceof JSONObject) {
+
+                    return (JSONObject) value;
                 }
 
 
@@ -2758,7 +3444,9 @@ public class MainActivity extends Activity {
 
 
                 Object value =
-                        object.get(key);
+                        object.get(
+                                key
+                        );
 
 
                 if (value instanceof JSONObject) {
@@ -2767,25 +3455,35 @@ public class MainActivity extends Activity {
                             (JSONObject) value;
 
 
-                    if (child.has("value")) {
+                    if (child.has(
+                            "value"
+                    )) {
 
                         return String.valueOf(
-                                child.get("value")
+                                child.get(
+                                        "value"
+                                )
                         );
                     }
 
 
-                    if (child.has("Value")) {
+                    if (child.has(
+                            "Value"
+                    )) {
 
                         return String.valueOf(
-                                child.get("Value")
+                                child.get(
+                                        "Value"
+                                )
                         );
                     }
                 }
 
 
                 String result =
-                        String.valueOf(value);
+                        String.valueOf(
+                                value
+                        );
 
 
                 if (!result.equalsIgnoreCase(
@@ -2832,7 +3530,9 @@ public class MainActivity extends Activity {
 
 
                 Object value =
-                        object.get(key);
+                        object.get(
+                                key
+                        );
 
 
                 if (value instanceof JSONObject) {
@@ -2841,16 +3541,25 @@ public class MainActivity extends Activity {
                             (JSONObject) value;
 
 
-                    if (child.has("value")) {
+                    if (child.has(
+                            "value"
+                    )) {
 
                         value =
-                                child.get("value");
+                                child.get(
+                                        "value"
+                                );
 
                     } else if (
-                            child.has("Value")) {
+                            child.has(
+                                    "Value"
+                            )
+                    ) {
 
                         value =
-                                child.get("Value");
+                                child.get(
+                                        "Value"
+                                );
                     }
                 }
 
@@ -2864,7 +3573,9 @@ public class MainActivity extends Activity {
 
                 String s =
                         normalizeDigits(
-                                String.valueOf(value)
+                                String.valueOf(
+                                        value
+                                )
                         );
 
 
@@ -2872,7 +3583,18 @@ public class MainActivity extends Activity {
                         s.replace(
                                 ",",
                                 ""
-                        ).trim();
+                        );
+
+
+                s =
+                        s.replace(
+                                "٬",
+                                ""
+                        );
+
+
+                s =
+                        s.trim();
 
 
                 if (s.length() == 0) {
@@ -2880,7 +3602,9 @@ public class MainActivity extends Activity {
                 }
 
 
-                return Double.parseDouble(s);
+                return Double.parseDouble(
+                        s
+                );
 
 
             } catch (Exception ignored) {
@@ -2893,7 +3617,7 @@ public class MainActivity extends Activity {
 
 
     // =========================================================
-    // Normalize Persian Digits
+    // Normalize Digits
     // =========================================================
 
     private String normalizeDigits(
@@ -3052,13 +3776,6 @@ public class MainActivity extends Activity {
                 );
 
 
-        result =
-                result.replace(
-                        '\u200C',
-                        '‌'
-                );
-
-
         return result;
     }
 
@@ -3128,7 +3845,9 @@ public class MainActivity extends Activity {
                 );
 
 
-        return df.format(value);
+        return df.format(
+                value
+        );
     }
 
 
@@ -3138,6 +3857,13 @@ public class MainActivity extends Activity {
 
     private String formatPercent(
             double value) {
+
+        if (Double.isNaN(value) ||
+                Double.isInfinite(value)) {
+
+            return "0.00%";
+        }
+
 
         return String.format(
                 Locale.US,
@@ -3246,6 +3972,7 @@ public class MainActivity extends Activity {
                         0
                 );
             }
+
 
         } catch (Exception ignored) {
         }
